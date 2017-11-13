@@ -1,4 +1,4 @@
-function getopts(gt::GradientTolerance{T}, maxiter::Int)
+function getopts(gt::GradientTolerance{T}, maxiter::Int) where T
     opts = Optim.Options(f_tol = zero(T), x_tol = zero(T),
                          g_tol = gt.g0norm*gt.tol,
                          allow_f_increases = true,
@@ -6,7 +6,7 @@ function getopts(gt::GradientTolerance{T}, maxiter::Int)
     return opts
 end
 
-function getopts(ft::FunctionTolerance{T}, maxiter::Int)
+function getopts(ft::FunctionTolerance{T}, maxiter::Int) where T
     cb = FunctionStop(ft.fL + ft.tol*(ft.f0 - ft.fL))
     opts = Optim.Options(f_tol = zero(T), x_tol = zero(T), g_tol = zero(T),
                          allow_f_increases = true,
@@ -14,7 +14,7 @@ function getopts(ft::FunctionTolerance{T}, maxiter::Int)
     return opts
 end
 
-function runproblem(df, x0, solver::Optimizer, solvername::AbstractString,
+function runproblem(df, x0, solver::Optim.Optimizer, solvername::AbstractString,
                     problemname::AbstractString,
                     metrictol::StopTolerance;
                     recordtime::Bool = false, maxiter::Int = 1000)
@@ -25,7 +25,7 @@ function runproblem(df, x0, solver::Optimizer, solvername::AbstractString,
 
     r = optimize(df, x0, solver, opts)
 
-    runtime = recordtime ? @elapsed optimize(df, x0, solver, opts) : NaN
+    runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
 
     sname = isempty(solvername) ? summary(solver) : solvername
     OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
@@ -103,6 +103,6 @@ function createdataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
         sucarr[k]    = orun.success
     end
 
-    dframe = DataFrame([pnames, snames, iters, fcallarr, gcallarr, hcallarr, cputimes, fvalarr, f0arr, gnormarr, g0normarr, succarr]
+    dframe = DataFrame([pnames, snames, iters, fcallarr, gcallarr, hcallarr, cputimes, fvalarr, f0arr, gnormarr, g0normarr, succarr],
                        [:Problem, :Solver, :Iterations, :fcalls, :gcalls, :hcalls, :CPUtime, :fval, :f0, :gnorm, :g0norm, :Success])
 end

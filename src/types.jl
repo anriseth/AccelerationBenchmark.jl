@@ -1,36 +1,3 @@
-"Log of results from a given optimization run."
-immutable OptimizationRun{T,Tf}
-    iterations::Int
-    fevals::Int
-    gevals::Int
-    hevals::Int
-    cputime::T
-    fval::Tf
-    f0::Tf
-    gnorm::Tf
-    g0norm::Tf
-    solvername::String
-    problemname::String
-    success::Bool
-end
-
-function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
-                         f0, gnorm, g0norm, solvername, problemname,
-                         ft::FunctionTolerance)
-    success = fval ≤ ft.fL + ft.tol*(ft.f0 - ft.fL)
-    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, f0,
-                    gnorm, gnorm, solvername, problemname, success)
-end
-
-
-function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
-                         gnorm, solvername, problemname,
-                         gt::GradientTolerance)
-    success = gnorm ≤ gt.tol*gt.g0norm
-    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, gnorm,
-                    solvername, success)
-end
-
 """
 Callback to stop optimization if the function value is below some threshold.
 """
@@ -83,4 +50,38 @@ immutable UnknownFunctionTolerance{T} <: StopTolerance
     #       starting this process, and then store the approximate minimum value.
     gtol::T
     iterations::Int
+end
+
+
+"Log of results from a given optimization run."
+immutable OptimizationRun{T,Tf}
+    iterations::Int
+    fevals::Int
+    gevals::Int
+    hevals::Int
+    cputime::T
+    fval::Tf
+    f0::Tf
+    gnorm::Tf
+    g0norm::Tf
+    solvername::String
+    problemname::String
+    success::Bool
+end
+
+function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
+                         f0, gnorm, g0norm, solvername, problemname,
+                         ft::FunctionTolerance)
+    success = fval ≤ ft.fL + ft.tol*(ft.f0 - ft.fL)
+    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, f0,
+                    gnorm, gnorm, solvername, problemname, success)
+end
+
+
+function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
+                         gnorm, solvername, problemname,
+                         gt::GradientTolerance)
+    success = gnorm ≤ gt.tol*gt.g0norm
+    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, gnorm,
+                    solvername, success)
 end
