@@ -40,42 +40,47 @@ Loop over solvers for problem `prob` and optimize until a given `stoptolerance`.
 Return vector of `OptimizationRun`s for a given problem.
 Optionally include runtime (runs optimization twice per solver).
 """
-function createruns(prob, solvers::AbstractVector, solvernames::AbstractVector{String},
+function createruns(prob, problemname::AbstractString,
+                    solvers::AbstractVector, solvernames::AbstractVector{String},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                    maxiter::Bool = 1000) where T <: Real
+                    maxiter::Int = 1000) where T <: Real
     oruns = Vector{OptimizationRun{Float64,typeof(f0)}}(length(solvers))
-    createruns!(oruns, prob, solvers, solvernames,
+    createruns!(oruns, prob, problemname, solvers, solvernames,
                 tol, stoptype, timelog, maxiter)
     oruns
 end
 
-function createruns!(oruns, prob, solvers::AbstractVector, solvernames::AbstractVector{String},
+function createruns!(oruns, prob, problemname::AbstractString,
+                     solvers::AbstractVector, solvernames::AbstractVector{String},
                      tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                     maxiter::Bool = 1000) where T <: Real
+                     maxiter::Int = 1000) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
     # TODO: Update for twice differentiable problems
     # TODO: Update with fg! functionality
+    x0 = initial_x(prob)
+    df0 = optim_problem(prob)
+    f0 = value_gradient!(df0, x0)
+    g0norm = norm(gradient(df0), Inf)
     if stoptype == :GradientTolRelative
         metrictol = GradientTolerance(tol,g0norm)
     elseif stoptype == :GradientTol
         metrictol = GradientTolerance(tol,one(T))
     elseif stoptype == :FunctionTolRelative
-        fL = minimum(prob)
+        fL = solver_optimum(prob)
         @assert isfinite(fL)
         metrictol = FunctionTolerance(tol, f0, fL)
     elseif stoptype == :FunctionTol
-        fL = minimum(prob)
+        fL = solver_optimum(prob)
         @assert isfinite(fL)
         metrictol = FunctionTolerance(tol, one(fL) + fL, fL)
     else
         Base.error("The parameter `stoptype` must be one of :GradientTolRelative, :GradientTol, :FunctionTolRelative, or :FunctionTol.")
     end
 
-    x0 = initial_x(prob)
     for (k, solver) in enumerate(solvers)
         df = optim_problem(prob)
-        oruns[k] = runproblem(df, initial_x(prob), solver, metrictol,
-                              solvernames[k], probname;
+        oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
+                              problemname, metrictol;
                               recordtime=timelog, maxiter = maxiter)
     end
 
@@ -95,7 +100,8 @@ function runproblems(problems::AbstractVector, problemnames::AbstractVector{Stri
     oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
 
     for (k,prob) in problems
-        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, solvers, solvernames,
+        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, problemnames[k],
+                    solvers, solvernames,
                     tol, stoptype, timelog, maxiter)
     end
 
@@ -131,7 +137,7 @@ function createdataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
         f0arr[k]     = orun.f0
         gnormarr[k]  = orun.gnorm
         g0normarr[k] = orun.g0norm
-        sucarr[k]    = orun.success
+        succarr[k]    = orun.success
     end
 
     dframe = DataFrame([pnames, snames, iters, fcallarr, gcallarr, hcallarr, cputimes, fvalarr, f0arr, gnormarr, g0normarr, succarr],

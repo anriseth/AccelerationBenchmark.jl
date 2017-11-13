@@ -6,7 +6,8 @@ solver_optimum(p::OptimizationProblem) = p.minimum
 function optim_problem(op::OptimizationProblem)
     if op.istwicedifferentiable
         df = TwiceDifferentiable(objective(op), gradient(op),
-                                 hessian(op), initial_x(op))
+                                 UnconstrainedProblems.hessian(op),
+                                 initial_x(op))
     elseif op.isdifferentiable
         df = OnceDifferentiable(objective(op), gradient(op), initial_x(op))
     else

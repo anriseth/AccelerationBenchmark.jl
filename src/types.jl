@@ -74,14 +74,14 @@ function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
                          ft::FunctionTolerance)
     success = fval ≤ ft.fL + ft.tol*(ft.f0 - ft.fL)
     OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, f0,
-                    gnorm, gnorm, solvername, problemname, success)
+                    gnorm, g0norm, solvername, problemname, success)
 end
 
 
 function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
-                         gnorm, solvername, problemname,
+                         f0, gnorm, g0norm, solvername, problemname,
                          gt::GradientTolerance)
     success = gnorm ≤ gt.tol*gt.g0norm
-    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, gnorm,
-                    solvername, success)
+    OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, f0,
+                    gnorm, g0norm, solvername, problemname, success)
 end
