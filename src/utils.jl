@@ -25,7 +25,14 @@ function runproblem(df, x0, solver::Optim.Optimizer, solvername::AbstractString,
 
     r = optimize(df, x0, solver, opts)
 
-    runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
+    if recordtime
+        # TODO: Do this with BenchmarkTools?
+        runtime = @elapsed optimize(df, x0, solver, opts)
+        runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
+    else
+        runtime = NaN
+    end
+    #runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
 
     sname = isempty(solvername) ? summary(solver) : solvername
     OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
@@ -88,14 +95,14 @@ function createruns!(oruns, prob, problemname::AbstractString,
 end
 
 """
-Runs a list of problems for a list of solvers to a given stop tolerance.
+Create performance measures of a list of solvers on a problem set.
 
 Returns a vector of `OptimizationRun`s.
 """
-function runproblems(problems::AbstractVector, problemnames::AbstractVector{String},
-                     solvers::AbstractVector, solvernames::AbstractVector{String},
-                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                     maxiter::Bool = 1000) where T <: Real
+function createmeasures(problems::AbstractVector, problemnames::AbstractVector{String},
+                        solvers::AbstractVector, solvernames::AbstractVector{String},
+                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                        maxiter::Bool = 1000) where T <: Real
     np = length(problems); ns = length(solvers)
     oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
 
@@ -109,8 +116,11 @@ function runproblems(problems::AbstractVector, problemnames::AbstractVector{Stri
 end
 
 
-"Take a vector of `OptimizationRun`s and convert it to a DataFrame"
-function createdataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
+"""
+Take a vector of `OptimizationRun`s representing performance measures and
+convert it to a DataFrame of performance measures
+"""
+function createmeasuredataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
     n         = length(oruns)
     snames    = Vector{String}(n)
     pnames    = similar(snames)
@@ -137,9 +147,34 @@ function createdataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
         f0arr[k]     = orun.f0
         gnormarr[k]  = orun.gnorm
         g0normarr[k] = orun.g0norm
-        succarr[k]    = orun.success
+        succarr[k]   = orun.success
     end
 
-    dframe = DataFrame([pnames, snames, iters, fcallarr, gcallarr, hcallarr, cputimes, fvalarr, f0arr, gnormarr, g0normarr, succarr],
-                       [:Problem, :Solver, :Iterations, :fcalls, :gcalls, :hcalls, :CPUtime, :fval, :f0, :gnorm, :g0norm, :Success])
+    dframe = DataFrame(Problem = pnames, Solver = snames, Iterations = iters,
+                       fcalls = fcallarr, gcalls = gcallarr, hcalls = hcallarr,
+                       CPUtime = cputimes, fval = fvalarr, f0 = f0arr,
+                       gnorm = gnormarr, g0norm = g0normarr, Success = succarr)
+end
+
+" Return performance ratios x / minimum(x), but set elements where `z[k] = false` to `Inf`"
+function _nanratio(x, z)
+    retval = x / minimum(x)
+    retval[.!z .| isnan.(retval) .| isna.(retval)] = Inf # Should we use NA here?
+    return retval
+end
+
+"Create a DataFrame of performance ratios from a dataframe of performance measures."
+function createratiodataframe(dframe::DataFrame)
+    by(dframe, :Problem) do dfr
+        DataFrame(Solver = dfr[:Solver], rfcalls = _nanratio(dfr[:fcalls], dfr[:Success]),
+                  rgcalls = _nanratio(dfr[:gcalls], dfr[:Success]),
+                  rhcalls = _nanratio(dfr[:hcalls], dfr[:Success]),
+                  rCPUtime = _nanratio(dfr[:CPUtime], dfr[:Success]),
+                  Success = dfr[:Success])
+    end
+end
+
+"Create a data frame with performance ratios from a vector of `OptimizationRun`s"
+function createratiodataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
+    createratiodataframe(createmeasuredataframe(oruns))
 end
