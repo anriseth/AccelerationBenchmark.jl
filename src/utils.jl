@@ -102,7 +102,7 @@ Returns a vector of `OptimizationRun`s.
 function createmeasures(problems::AbstractVector, problemnames::AbstractVector{String},
                         solvers::AbstractVector, solvernames::AbstractVector{String},
                         tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                        maxiter::Bool = 1000) where T <: Real
+                        maxiter::Int = 1000) where T <: Real
     np = length(problems); ns = length(solvers)
     oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
 
