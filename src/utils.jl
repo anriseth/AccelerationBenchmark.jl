@@ -170,6 +170,7 @@ function createratiodataframe(dframe::DataFrame)
                   rgcalls = _nanratio(dfr[:gcalls], dfr[:Success]),
                   rhcalls = _nanratio(dfr[:hcalls], dfr[:Success]),
                   rCPUtime = _nanratio(dfr[:CPUtime], dfr[:Success]),
+                  rIterations = _nanratio(dfr[:Iterations], dfr[:Success]),
                   Success = dfr[:Success])
     end
 end
@@ -177,4 +178,23 @@ end
 "Create a data frame with performance ratios from a vector of `OptimizationRun`s"
 function createratiodataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
     createratiodataframe(createmeasuredataframe(oruns))
+end
+
+function createviolins(rdf::DataFrame, yscale::Symbol = :log2)
+    plt1 = @df rdf violin(:Solver, :rfcalls, label="f-calls", yscale=:log2)
+    plt2 = @df rdf violin(:Solver, :rgcalls, label="g-calls", yscale=:log2)
+    plt3 = @df rdf violin(:Solver, :rCPUtime, label="CPU time", yscale=:log2)
+    plt4 = @df rdf violin(:Solver, :rIterations, label="Iterations", yscale=:log2)
+
+    return plot(plt1,plt2,plt3,plt4)
+end
+
+
+function createboxplots(rdf::DataFrame, yscale::Symbol = :log2) # TODO: Just add kwargs passed to plots?
+    plt1 = @df rdf boxplot(:Solver, :rfcalls, label="f-calls", yscale=:log2)
+    plt2 = @df rdf boxplot(:Solver, :rgcalls, label="g-calls", yscale=:log2)
+    plt3 = @df rdf boxplot(:Solver, :rCPUtime, label="CPU time", yscale=:log2)
+    plt4 = @df rdf boxplot(:Solver, :rIterations, label="Iterations", yscale=:log2)
+
+    return plot(plt1,plt2,plt3,plt4)
 end
