@@ -77,13 +77,79 @@ function createrunsrandomized(prob::OptimizationProblem, probnamebase::AbstractS
                          ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
 end
 
+# TODO: make a macro that generates each of the run[A-G] functions below.
+# They are all the same, except the probnamebase letter, and that runC uses RandomInitialxMat.
+
+"Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function runA(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "A-$N"
+    prob = UnconstrainedProblems._quadraticproblem(N)
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"Problem B in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function runB(seeds::AbstractArray, N::Int, ts::TestSetup =  defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "B-$N"
+    prob = UnconstrainedProblems._paraboloidproblem(N)
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"Problem C in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function runC(seeds::AbstractArray, N::Int, ts::TestSetup =  defaulttestsetup())
+    rnd = RandomizeInitialxMat(seeds)
+    probnamebase = "C-$N"
+    prob = UnconstrainedProblems._paraboloidproblem(N; mat=eye(N))
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"Problem D in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function runD(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "D-$N"
+    prob = UnconstrainedProblems._extrosenbrockproblem(N)
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"Problem E in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function runE(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "E-$N"
+    prob = UnconstrainedProblems._extpowellproblem(N)
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
 
 
-function runit()
-    ts = defaulttestsetup()
-    rnd = RandomizeInitialx(0:99)
-    probnamebase = "A-100"
-    prob = UnconstrainedProblems._quadraticproblem(100)
+"""
+Problem F in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
+
+WARNING: `_trigonometricproblem` follows Moré et al. - *Testing unconstrained optimization software*, 1981,
+which has a sign difference compared to Riseth.
+"""
+function runF(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "F-$N"
+    prob = UnconstrainedProblems._trigonometricproblem(N)
+
+    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"""
+Problem G in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
+
+WARNING: This function does not have a closed-form minimum value,
+and the minimum depends on `N`.
+"""
+function runG(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
+    rnd = RandomizeInitialx(seeds)
+    probnamebase = "G-$N"
+    prob = UnconstrainedProblems._penfunIproblem(N)
 
     oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
 end
