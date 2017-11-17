@@ -166,11 +166,12 @@ end
 "Create a DataFrame of performance ratios from a dataframe of performance measures."
 function createratiodataframe(dframe::DataFrame)
     by(dframe, :Problem) do dfr
-        DataFrame(Solver = dfr[:Solver], rfcalls = _nanratio(dfr[:fcalls], dfr[:Success]),
-                  rgcalls = _nanratio(dfr[:gcalls], dfr[:Success]),
-                  rhcalls = _nanratio(dfr[:hcalls], dfr[:Success]),
-                  rCPUtime = _nanratio(dfr[:CPUtime], dfr[:Success]),
-                  rIterations = _nanratio(dfr[:Iterations], dfr[:Success]),
+        DataFrame(Solver = dfr[:Solver],
+                  fcalls = _nanratio(dfr[:fcalls], dfr[:Success]),
+                  gcalls = _nanratio(dfr[:gcalls], dfr[:Success]),
+                  hcalls = _nanratio(dfr[:hcalls], dfr[:Success]),
+                  CPUtime = _nanratio(dfr[:CPUtime], dfr[:Success]),
+                  Iterations = _nanratio(dfr[:Iterations], dfr[:Success]),
                   Success = dfr[:Success])
     end
 end
@@ -181,20 +182,20 @@ function createratiodataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T wher
 end
 
 function createviolins(rdf::DataFrame, yscale::Symbol = :log2)
-    plt1 = @df rdf violin(:Solver, :rfcalls, label="f-calls", yscale=:log2)
-    plt2 = @df rdf violin(:Solver, :rgcalls, label="g-calls", yscale=:log2)
-    plt3 = @df rdf violin(:Solver, :rCPUtime, label="CPU time", yscale=:log2)
-    plt4 = @df rdf violin(:Solver, :rIterations, label="Iterations", yscale=:log2)
+    plt1 = @df rdf violin(:Solver, :fcalls, label="f-calls", yscale=:log2)
+    plt2 = @df rdf violin(:Solver, :gcalls, label="g-calls", yscale=:log2)
+    plt3 = @df rdf violin(:Solver, :CPUtime, label="CPU time", yscale=:log2)
+    plt4 = @df rdf violin(:Solver, :Iterations, label="Iterations", yscale=:log2)
 
     return plot(plt1,plt2,plt3,plt4)
 end
 
 
 function createboxplots(rdf::DataFrame, yscale::Symbol = :log2) # TODO: Just add kwargs passed to plots?
-    plt1 = @df rdf boxplot(:Solver, :rfcalls, label="f-calls", yscale=:log2)
-    plt2 = @df rdf boxplot(:Solver, :rgcalls, label="g-calls", yscale=:log2)
-    plt3 = @df rdf boxplot(:Solver, :rCPUtime, label="CPU time", yscale=:log2)
-    plt4 = @df rdf boxplot(:Solver, :rIterations, label="Iterations", yscale=:log2)
+    plt1 = @df rdf boxplot(:Solver, :fcalls, label="f-calls", yscale=:log2)
+    plt2 = @df rdf boxplot(:Solver, :gcalls, label="g-calls", yscale=:log2)
+    plt3 = @df rdf boxplot(:Solver, :CPUtime, label="CPU time", yscale=:log2)
+    plt4 = @df rdf boxplot(:Solver, :Iterations, label="Iterations", yscale=:log2)
 
     return plot(plt1,plt2,plt3,plt4)
 end
