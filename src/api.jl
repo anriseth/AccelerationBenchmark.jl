@@ -6,10 +6,13 @@ solver_optimum(p::OptimizationProblem) = p.minimum
 function optim_problem(op::OptimizationProblem)
     if op.istwicedifferentiable
         df = TwiceDifferentiable(objective(op), gradient(op),
+                                 UnconstrainedProblems.objective_gradient(op),
                                  UnconstrainedProblems.hessian(op),
                                  initial_x(op))
     elseif op.isdifferentiable
-        df = OnceDifferentiable(objective(op), gradient(op), initial_x(op))
+        df = OnceDifferentiable(objective(op), gradient(op),
+                                UnconstrainedProblems.objective_gradient(op),
+                                initial_x(op))
     else
         error("Only implemented for differentiable problems.")
     end
