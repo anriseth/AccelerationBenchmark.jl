@@ -4,14 +4,6 @@ using OptimTestProblems.UnconstrainedProblems
 using AccelerationBenchmark
 using Optim, LineSearches
 
-immutable TestSetup{T<:Real, Ts<:AbstractVector, Tn<:AbstractVector}
-    solvers::Ts
-    solvernames::Tn
-    stoptype::Symbol
-    stoptol::T
-    timelog::Bool
-    maxiter::Int
-end
 
 function defaulttestsetup()
     solvers = [LBFGS(scaleinvH0=false,linesearch=BackTracking(order=3)),

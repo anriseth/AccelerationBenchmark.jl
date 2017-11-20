@@ -9,12 +9,15 @@ using OptimTestProblems.UnconstrainedProblems
 using NLSolversBase
 using Optim, LineSearches
 using DataFrames, DataArrays
-using StatPlots
+using StatPlots, GroupedErrors
 
-export OptimizationRun, TestBench
+export OptimizationRun, TestSetup, TestBench
 
-export createruns, createruns!, createmeasuredataframe,
-    createratiodataframe, createviolins, createboxplots
+export createruns, createruns!, createmeasures,
+    createmeasuredataframe, createratiodataframe,
+    createviolins, createboxplots, createstatplots,
+    createperfprofiles
+
 
 include("types.jl")
 include("api.jl")

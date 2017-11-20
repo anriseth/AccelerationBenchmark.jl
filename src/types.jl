@@ -85,3 +85,14 @@ function OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval,
     OptimizationRun(iterations, fevals, gevals, hevals, cputime, fval, f0,
                     gnorm, g0norm, solvername, problemname, success)
 end
+
+
+"Collection of options used create performance measures."
+immutable TestSetup{T<:Real, Ts<:AbstractVector, Tn<:AbstractVector}
+    solvers::Ts
+    solvernames::Tn
+    stoptype::Symbol
+    stoptol::T
+    timelog::Bool
+    maxiter::Int
+end

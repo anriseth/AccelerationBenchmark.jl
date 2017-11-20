@@ -6,3 +6,4 @@ BenchmarkProfiles
 DataFrames
 OptimTests
 StatPlots
+GroupedErrors

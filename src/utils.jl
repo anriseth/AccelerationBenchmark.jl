@@ -48,7 +48,7 @@ Return vector of `OptimizationRun`s for a given problem.
 Optionally include runtime (runs optimization twice per solver).
 """
 function createruns(prob, problemname::AbstractString,
-                    solvers::AbstractVector, solvernames::AbstractVector{String},
+                    solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                     maxiter::Int = 1000) where T <: Real
     oruns = Vector{OptimizationRun{Float64,typeof(f0)}}(length(solvers))
@@ -58,7 +58,7 @@ function createruns(prob, problemname::AbstractString,
 end
 
 function createruns!(oruns, prob, problemname::AbstractString,
-                     solvers::AbstractVector, solvernames::AbstractVector{String},
+                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                      tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                      maxiter::Int = 1000) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
@@ -99,14 +99,14 @@ Create performance measures of a list of solvers on a problem set.
 
 Returns a vector of `OptimizationRun`s.
 """
-function createmeasures(problems::AbstractVector, problemnames::AbstractVector{String},
-                        solvers::AbstractVector, solvernames::AbstractVector{String},
+function createmeasures(problems::AbstractVector, problemnames::AbstractVector{<:AbstractString},
+                        solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                         tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                         maxiter::Int = 1000) where T <: Real
     np = length(problems); ns = length(solvers)
     oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
 
-    for (k,prob) in problems
+    for (k,prob) in enumerate(problems)
         createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, problemnames[k],
                     solvers, solvernames,
                     tol, stoptype, timelog, maxiter)
@@ -114,6 +114,12 @@ function createmeasures(problems::AbstractVector, problemnames::AbstractVector{S
 
     return oruns
 end
+
+createmeasures(problems::AbstractVector, problemnames::AbstractVector{<:AbstractString},
+               ts::TestSetup) =
+                   createmeasures(problems, problemnames, ts.solvers, ts.solvernames,
+                                  ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
+
 
 
 """
@@ -177,25 +183,73 @@ function createratiodataframe(dframe::DataFrame)
 end
 
 "Create a data frame with performance ratios from a vector of `OptimizationRun`s"
-function createratiodataframe(oruns::Vector{OptimizationRun{T,Tf}}) where T where Tf
+createratiodataframe(oruns::Vector{OptimizationRun}) =
     createratiodataframe(createmeasuredataframe(oruns))
+
+createviolins(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,violin; kwargs...)
+
+createboxplots(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,boxplot; kwargs...)
+
+function makefinite(rdf::DataFrame, maxfun = x-> 2*maximum(x))
+    cprdf = deepcopy(rdf)
+    makefinite!(cprdf, maxfun)
+    return cprdf
 end
 
-function createviolins(rdf::DataFrame, yscale::Symbol = :log2)
-    plt1 = @df rdf violin(:Solver, :fcalls, label="f-calls", yscale=:log2)
-    plt2 = @df rdf violin(:Solver, :gcalls, label="g-calls", yscale=:log2)
-    plt3 = @df rdf violin(:Solver, :CPUtime, label="CPU time", yscale=:log2)
-    plt4 = @df rdf violin(:Solver, :Iterations, label="Iterations", yscale=:log2)
-
-    return plot(plt1,plt2,plt3,plt4)
+function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
+    pltvals = [:fcalls, :gcalls,:CPUtime,:Iterations]
+    for k in 1:length(pltvals)
+        rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = maxfun(rdf[isfinite.(rdf[pltvals[k]]), pltvals[k]])
+    end
 end
 
 
-function createboxplots(rdf::DataFrame, yscale::Symbol = :log2) # TODO: Just add kwargs passed to plots?
-    plt1 = @df rdf boxplot(:Solver, :fcalls, label="f-calls", yscale=:log2)
-    plt2 = @df rdf boxplot(:Solver, :gcalls, label="g-calls", yscale=:log2)
-    plt3 = @df rdf boxplot(:Solver, :CPUtime, label="CPU time", yscale=:log2)
-    plt4 = @df rdf boxplot(:Solver, :Iterations, label="Iterations", yscale=:log2)
+function createstatplots(rdf::DataFrame, fun::Function = violin; kwargs...) # TODO: Just add kwargs passed to plots?
+    pltlabels = ["f-calls", "g-calls", "CPU time", "Iterations"]
+    plts = Vector{Plots.Plot}(length(pltlabels))
 
-    return plot(plt1,plt2,plt3,plt4)
+    cprdf = makefinite(rdf)
+
+    plts[1] = @df cprdf fun(:Solver, :fcalls, label=pltlabels[1])
+    plts[2] = @df cprdf fun(:Solver, :gcalls, label=pltlabels[2])
+    plts[3] = @df cprdf fun(:Solver, :CPUtime, label=pltlabels[3])
+    plts[4] = @df cprdf fun(:Solver, :Iterations, label=pltlabels[4])
+    return plot(plts..., kwargs...)
+end
+
+function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
+                           t::Symbol = :steppost, xscale::Symbol = :log2,
+                           kwargs...)
+    @assert sym in [:fcalls, :gcalls, :CPUtime, :Iterations]
+    cprdf = makefinite(rdf)
+    plt = if sym == :fcalls
+        @> cprdf begin
+            @splitby _.Solver
+            @x _.fcalls
+            @y :cumulative
+            @plot
+        end
+    elseif sym == :gcalls
+        @> cprdf begin
+            @splitby _.Solver
+            @x _.gcalls
+            @y :cumulative
+            @plot
+        end
+    elseif sym == :CPUtime
+        @> cprdf begin
+            @splitby _.Solver
+            @x _.CPUtime
+            @y :cumulative
+            @plot
+        end
+    elseif sym == :Iterations
+        @> cprdf begin
+            @splitby _.Solver
+            @x _.Iterations
+            @y :cumulative
+            @plot
+        end
+    end
+    return plot(plt; t=t, xscale=xscale, kwargs...)
 end
