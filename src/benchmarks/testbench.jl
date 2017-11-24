@@ -61,108 +61,6 @@ function randomizeproblem!(prob::OptimizationProblem, rnd::RandomizeInitialxMat,
     prob.parameters.mat .= UnconstrainedProblems._randommatrix(length(prob.initial_x), true)
 end
 
-function createrunsrandomized(prob::OptimizationProblem, rnd::RandomizeProblem,
-                              probnamebase::AbstractString,
-                              solvers::AbstractVector, solvernames::AbstractVector{String},
-                              tol::T, stoptype::Symbol = :GradientTolRelative,
-                              timelog::Bool = false,
-                              maxiter::Int = 1000) where T <: Real
-    np = length(rnd)
-    ns = length(solvers)
-    oruns = Vector{OptimizationRun{Float64,Float64}}(np*ns)
-    for (k, seed) in enumerate(rnd.seeds)
-        srand(seed)
-        randomizeproblem!(prob, rnd) # TODO: pass seed/k in here in here?
-        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, probnamebase*"-$seed",
-                    solvers, solvernames,
-                    tol, stoptype, timelog, maxiter)
-    end
-    return oruns
-end
-
-function createrunsrandomized(prob::OptimizationProblem, probnamebase::AbstractString,
-                              rnd::RandomizeProblem, ts::TestSetup)
-    createrunsrandomized(prob, rnd, probnamebase, ts.solvers, ts.solvernames,
-                         ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
-end
-
-# TODO: make a macro that generates each of the run[A-G] functions below.
-# They are all the same, except the probnamebase letter, and that runC uses RandomInitialxMat.
-
-"Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
-function runA(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "A-$N"
-    prob = UnconstrainedProblems._quadraticproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-"Problem B in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
-function runB(seeds::AbstractArray, N::Int, ts::TestSetup =  defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "B-$N"
-    prob = UnconstrainedProblems._paraboloidproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-"Problem C in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
-function runC(seeds::AbstractArray, N::Int, ts::TestSetup =  defaulttestsetup())
-    rnd = RandomizeInitialxMat(seeds)
-    probnamebase = "C-$N"
-    prob = UnconstrainedProblems._paraboloidproblem(N; mat=eye(N))
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-"Problem D in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
-function runD(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "D-$N"
-    prob = UnconstrainedProblems._extrosenbrockproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-"Problem E in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
-function runE(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "E-$N"
-    prob = UnconstrainedProblems._extpowellproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-
-"""
-Problem F in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
-
-WARNING: `_trigonometricproblem` follows Moré et al. - *Testing unconstrained optimization software*, 1981,
-which has a sign difference compared to Riseth.
-"""
-function runF(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "F-$N"
-    prob = UnconstrainedProblems._trigonometricproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
-"""
-Problem G in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
-
-WARNING: This function does not have a closed-form minimum value,
-and the minimum depends on `N`.
-"""
-function runG(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
-    rnd = RandomizeInitialx(seeds)
-    probnamebase = "G-$N"
-    prob = UnconstrainedProblems._penfunIproblem(N)
-
-    oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
-end
-
 "Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createA(N::Int, seednum::Int)
     probname = "A-$N-$seednum"
@@ -247,24 +145,28 @@ macro createproblem(fun, N, seednum)
     eval(Symbol(:create,fun))(eval(N),eval(seednum))
 end
 
+"Helper function for pmap in createrunsrandomized."
+function getoruns(seed::Int, N::Int, cfun, ts::TestSetup, showname::Bool)
+    prob, probname = cfun(N,seed)
+    showname && println("$probname")
+    createruns(prob, probname,
+               ts.solvers, ts.solvernames,
+               ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
+end
+
 """
-Run the same problem family multiple times in parallel with different randomized conditions.
+Run the same problem family multiple times with different randomized conditions.
 
 Return a vector or `OptimizationRun`s
 """
-function createrunsrandomizedparallel(fun::Symbol, N::Int, seeds::AbstractArray{Int},
-                                      ts::TestSetup = defaulttestsetup())
+function createrunsrandomized(fun::Symbol, N::Int, seeds::AbstractArray,
+                              ts::TestSetup = defaulttestsetup();
+                              showname::Bool = false)
     cfun = eval(Symbol(:create,fun))
     np = length(seeds)
-    ns = length(ts.solvers)
-    oruns = Vector{OptimizationRun{Float64,Float64}}(np*ns)
-    for k = 1:np
-        prob, probname = cfun(N,seeds[k])
-        @show probname
-        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, probname,
-                    ts.solvers, ts.solvernames,
-                    ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
-    end
+
+    oruns = vcat(pmap(k->getoruns(seeds[k],N,cfun,ts,showname), 1:np)...)
+
     return oruns
 end
 
@@ -276,17 +178,21 @@ function runmany(funs::AbstractVector, seeds::AbstractArray{Int},
                  ts::TestSetup = defaulttestsetup();
                  savejld::Bool = true,
                  savecsv::Bool = true,
-                 savebase::AbstractString = "data/")
+                 savebase::AbstractString = "data/",
+                 showname::Bool = true)
     # funs is a collection of Tuple{Symbol,Int}
     @assert savejld || savecsv
+    if myid() == 1 && !isdir(savebase)
+        mkdir(savebase)
+    end
     for fN in funs
-        oruns = createrunsrandomizedparallel(fN..., seeds, ts)
+        oruns = createrunsrandomized(fN..., seeds, ts; showname=showname)
         mdf = createmeasuredataframe(oruns)
         if savejld
-            save(savebase*"$(fN[1])-$(fN[2]).jld", "mdf", mdf)
+            myid() == 1 && save(savebase*"/$(fN[1])-$(fN[2]).jld", "mdf", mdf)
         end
         if savecsv
-            CSV.write(savebase*"$(fN[1])-$(fN[2]).csv", mdf)
+            myid() == 1 && CSV.write(savebase*"/$(fN[1])-$(fN[2]).csv", mdf)
         end
     end
 end
