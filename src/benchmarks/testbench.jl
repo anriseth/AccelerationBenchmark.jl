@@ -6,18 +6,33 @@ using Optim, LineSearches
 using JLD, CSV
 
 function defaulttestsetup()
-    solvers = [LBFGS(scaleinvH0=false,linesearch=BackTracking(order=3)),
-               LBFGS(scaleinvH0=false,linesearch=BackTracking(order=2)),
-               LBFGS(scaleinvH0=true,linesearch=BackTracking(order=3)),
-               LBFGS(scaleinvH0=true,linesearch=BackTracking(order=2)),
-               LBFGS(scaleinvH0=true,linesearch=MoreThuente()),
-               LBFGS(scaleinvH0=false,linesearch=MoreThuente())]
-    solvernames = ["LBFGS(false,BT3)", "LBFGS(false,BT2)",
-                   "LBFGS(true,BT3)", "LBFGS(true,BT2)",
-                   "LBFGS(true,MT)", "LBFGS(false,MT)"]
-    stoptype = :GradientTolRelative
-    stoptol  = 1e-8
-    timelog  = true
+    # Line search parameters taken from De Sterck
+    # MATLAB files for Poblano toolbox.
+    # The chosen gtol is *very* small. Typical values are 1e-1 for CG methods and 0.9 for quasi-Newton
+    ls = MoreThuente(f_tol = 1e-4, gtol = 1e-2, x_tol = 1e-15,
+                     stpmin = 1e-15, stpmax = 1e15, maxfev = 20)
+    lsstatic = Static(alpha = 1e-4, scaled = true)
+    ag = InitialStatic(alpha=1.0, scaled=false)
+
+    gdls = GradientDescent(alphaguess = ag, linesearch = ls)
+    gdst = GradientDescent(alphaguess = ag, linesearch = lsstatic)
+
+    solvers = [
+        LBFGS(alphaguess = ag, linesearch = ls, m = 5, scaleinvH0=true),
+        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdls),
+        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdst),
+        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdls),
+        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdst),
+    ]
+    solvernames = ["L-BFGS",
+                   "N-GMRES-A", "N-GMRES-B",
+                   "O-ACCEL-A", "O-ACCEL-B",
+                   ]
+    stoptype = :FunctionTolRelative
+    stoptol  = 1e-10
+    #stoptype = :GradientTolRelative
+    #stoptol  = 1e-8
+    timelog  = false
     maxiter  = 1500
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter)
 end
