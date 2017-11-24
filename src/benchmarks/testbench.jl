@@ -3,7 +3,7 @@ module TestBench
 using OptimTestProblems.UnconstrainedProblems
 using AccelerationBenchmark
 using Optim, LineSearches
-
+using JLD, CSV
 
 function defaulttestsetup()
     solvers = [LBFGS(scaleinvH0=false,linesearch=BackTracking(order=3)),
@@ -144,6 +144,134 @@ function runG(seeds::AbstractArray, N::Int, ts::TestSetup = defaulttestsetup())
     prob = UnconstrainedProblems._penfunIproblem(N)
 
     oruns = createrunsrandomized(prob, probnamebase, rnd, ts)
+end
+
+"Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function createA(N::Int, seednum::Int)
+    probname = "A-$N-$seednum"
+    prob = UnconstrainedProblems._quadraticproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"Problem B in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function createB(N::Int, seednum::Int)
+    probname = "B-$N-$seednum"
+    prob = UnconstrainedProblems._paraboloidproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"Problem C in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function createC(N::Int, seednum::Int)
+    probname = "C-$N-$seednum"
+    prob = UnconstrainedProblems._paraboloidproblem(N; mat=eye(N))
+
+    rnd = RandomizeInitialxMat([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"Problem D in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function createD(N::Int, seednum::Int)
+    probname = "D-$N-$seednum"
+    prob = UnconstrainedProblems._extrosenbrockproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"Problem E in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
+function createE(N::Int, seednum::Int)
+    probname = "E-$N-$seednum"
+    prob = UnconstrainedProblems._extpowellproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"""
+Problem F in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
+
+WARNING: `_trigonometricproblem` follows Moré et al. - *Testing unconstrained optimization software*, 1981,
+which has a sign difference compared to Riseth.
+"""
+function createF(N::Int, seednum::Int)
+    probname = "F-$N-$seednum"
+    prob = UnconstrainedProblems._trigonometricproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+"""
+Problem G in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017.
+
+WARNING: This function does not have a closed-form minimum value,
+and the minimum depends on `N`.
+"""
+function createG(N::Int, seednum::Int)
+    probname = "G-$N-$seednum"
+    prob = UnconstrainedProblems._penfunIproblem(N)
+
+    rnd = RandomizeInitialx([seednum])
+    randomizeproblem!(prob, rnd, 1)
+    return prob, probname
+end
+
+macro createproblem(fun, N, seednum)
+    eval(Symbol(:create,fun))(eval(N),eval(seednum))
+end
+
+"""
+Run the same problem family multiple times in parallel with different randomized conditions.
+
+Return a vector or `OptimizationRun`s
+"""
+function createrunsrandomizedparallel(fun::Symbol, N::Int, seeds::AbstractArray{Int},
+                                      ts::TestSetup = defaulttestsetup())
+    cfun = eval(Symbol(:create,fun))
+    np = length(seeds)
+    ns = length(ts.solvers)
+    oruns = Vector{OptimizationRun{Float64,Float64}}(np*ns)
+    for k = 1:np
+        prob, probname = cfun(N,seeds[k])
+        @show probname
+        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, probname,
+                    ts.solvers, ts.solvernames,
+                    ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
+    end
+    return oruns
+end
+
+"""
+Run problems and create tables with the corresponding measures, to be used
+to investigate performance and plot performance profiles.
+"""
+function runmany(funs::AbstractVector, seeds::AbstractArray{Int},
+                 ts::TestSetup = defaulttestsetup();
+                 savejld::Bool = true,
+                 savecsv::Bool = true,
+                 savebase::AbstractString = "data/")
+    # funs is a collection of Tuple{Symbol,Int}
+    @assert savejld || savecsv
+    for fN in funs
+        oruns = createrunsrandomizedparallel(fN..., seeds, ts)
+        mdf = createmeasuredataframe(oruns)
+        if savejld
+            save(savebase*"$(fN[1])-$(fN[2]).jld", "mdf", mdf)
+        end
+        if savecsv
+            CSV.write(savebase*"$(fN[1])-$(fN[2]).csv", mdf)
+        end
+    end
 end
 
 end
