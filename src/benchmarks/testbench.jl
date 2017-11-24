@@ -165,7 +165,7 @@ function createrunsrandomized(fun::Symbol, N::Int, seeds::AbstractArray,
     cfun = eval(Symbol(:create,fun))
     np = length(seeds)
 
-    oruns = vcat(pmap(k->getoruns(seeds[k],N,cfun,ts,showname), 1:np)...)
+    oruns = reduce(append!, pmap(k->getoruns(seeds[k],N,cfun,ts,showname), 1:np))
 
     return oruns
 end
