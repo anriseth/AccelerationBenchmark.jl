@@ -51,7 +51,7 @@ function createruns(prob, problemname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                     maxiter::Int = 1000) where T <: Real
-    oruns = Vector{OptimizationRun{Float64,typeof(f0)}}(length(solvers))
+    oruns = Vector{OptimizationRun{Float64,T}}(length(solvers))
     createruns!(oruns, prob, problemname, solvers, solvernames,
                 tol, stoptype, timelog, maxiter)
     oruns
@@ -62,8 +62,6 @@ function createruns!(oruns, prob, problemname::AbstractString,
                      tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                      maxiter::Int = 1000) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
-    # TODO: Update for twice differentiable problems
-    # TODO: Update with fg! functionality
     x0 = initial_x(prob)
     df0 = optim_problem(prob)
     f0 = value_gradient!(df0, x0)
@@ -105,9 +103,11 @@ function createmeasures(problems::AbstractVector, problemnames::AbstractVector{<
                         maxiter::Int = 1000) where T <: Real
     np = length(problems); ns = length(solvers)
     oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
+    #oruns = SharedArray{OptimizationRun{Float64,T}}(np*ns) # TODO: Make it SharedArray?. Problem with preallocation
 
-    for (k,prob) in enumerate(problems)
-        createruns!(view(oruns,(k-1)*ns+1:k*ns), prob, problemnames[k],
+    # TODO: make it parallel?
+    for prob in 1:np
+        createruns!(view(oruns,(k-1)*ns+1:k*ns), problems[k], problemnames[k],
                     solvers, solvernames,
                     tol, stoptype, timelog, maxiter)
     end
@@ -186,16 +186,23 @@ end
 createratiodataframe(oruns::Vector{OptimizationRun}) =
     createratiodataframe(createmeasuredataframe(oruns))
 
-createviolins(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,violin; kwargs...)
 
-createboxplots(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,boxplot; kwargs...)
-
+"""
+Ensure all performance metrics/ratios are finite, by setting
+non-finite value and failures to a "failure" value according to
+the rule `maxfun` (default x->2*maximum(x), taken over finite values).
+"""
 function makefinite(rdf::DataFrame, maxfun = x-> 2*maximum(x))
     cprdf = deepcopy(rdf)
     makefinite!(cprdf, maxfun)
     return cprdf
 end
 
+"""
+Ensure all performance metrics/ratios are finite, by setting
+non-finite value and failures to a "failure" value according to
+the rule `maxfun` (default x->2*maximum(x), taken over finite values).
+"""
 function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
     pltvals = [:fcalls, :gcalls,:CPUtime,:Iterations]
     for k in 1:length(pltvals)
@@ -203,8 +210,15 @@ function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
     end
 end
 
+"Create violin plot of performance metric/ratios grouped by solver."
+createviolins(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,violin; yscale = yscale, kwargs...)
 
-function createstatplots(rdf::DataFrame, fun::Function = violin; kwargs...) # TODO: Just add kwargs passed to plots?
+"Create box plot of performance metric/ratios grouped by solver."
+createboxplots(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,boxplot; yscale = yscale, kwargs...)
+
+"Create plot of performance metric/ratios grouped by solver. Defaults to violin plots."
+function createstatplots(rdf::DataFrame, fun::Function = violin;
+                         yscale = :log2, kwargs...)
     pltlabels = ["f-calls", "g-calls", "CPU time", "Iterations"]
     plts = Vector{Plots.Plot}(length(pltlabels))
 
@@ -214,9 +228,14 @@ function createstatplots(rdf::DataFrame, fun::Function = violin; kwargs...) # TO
     plts[2] = @df cprdf fun(:Solver, :gcalls, label=pltlabels[2])
     plts[3] = @df cprdf fun(:Solver, :CPUtime, label=pltlabels[3])
     plts[4] = @df cprdf fun(:Solver, :Iterations, label=pltlabels[4])
-    return plot(plts..., kwargs...)
+    return plot(plts...; yscale = yscale, kwargs...)
 end
 
+
+"""
+Create performance profiles from a DataFrame of performance ratios.
+Defaults to performance profiles of f-calls.
+"""
 function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
                            t::Symbol = :steppost, xscale::Symbol = :log2,
                            kwargs...)
@@ -252,4 +271,15 @@ function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
         end
     end
     return plot(plt; t=t, xscale=xscale, kwargs...)
+end
+
+"""
+Create performance profiles from a vector of OptimizationRuns.
+Defaults to performance profiles of f-calls.
+"""
+function createperfprofile(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls;
+                           t::Symbol = :steppost, xscale::Symbol = :log2,
+                           kwargs...)
+    createperfprofile(createratiodataframe(oruns), sym;
+                      t=t, xscale=xscale, kwargs...)
 end
