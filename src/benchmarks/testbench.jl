@@ -8,8 +8,9 @@ using JLD, CSV
 function defaulttestsetup()
     # Line search parameters taken from De Sterck
     # MATLAB files for Poblano toolbox.
-    # The chosen gtol is *very* small. Typical values are 1e-1 for CG methods and 0.9 for quasi-Newton
-    ls = MoreThuente(f_tol = 1e-4, gtol = 1e-2, x_tol = 1e-15,
+    # The De Sterck gtol=1e-2 is *very* small. Typical values are 1e-1 for CG methods and 0.9 for quasi-Newton
+    # In the updated paper we use gtol=0.1.
+    ls = MoreThuente(f_tol = 1e-4, gtol = 1e-1, x_tol = 1e-15,
                      stpmin = 1e-15, stpmax = 1e15, maxfev = 20)
     lsstatic = Static(alpha = 1e-4, scaled = true)
     ag = InitialStatic(alpha=1.0, scaled=false)

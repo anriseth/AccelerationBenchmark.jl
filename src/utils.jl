@@ -206,7 +206,12 @@ the rule `maxfun` (default x->2*maximum(x), taken over finite values).
 function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
     pltvals = [:fcalls, :gcalls,:CPUtime,:Iterations]
     for k in 1:length(pltvals)
-        rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = maxfun(rdf[isfinite.(rdf[pltvals[k]]), pltvals[k]])
+        if any(isfinite, rdf[pltvals[k]])
+            rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = maxfun(rdf[isfinite.(rdf[pltvals[k]]), pltvals[k]])
+        else
+            rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = -1.0
+        end
+
     end
 end
 
@@ -218,11 +223,12 @@ createboxplots(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,box
 
 "Create plot of performance metric/ratios grouped by solver. Defaults to violin plots."
 function createstatplots(rdf::DataFrame, fun::Function = violin;
-                         yscale = :log2, kwargs...)
+                         yscale = :log2, maxfun = x -> 2*maximum(x),
+                          kwargs...)
     pltlabels = ["f-calls", "g-calls", "CPU time", "Iterations"]
     plts = Vector{Plots.Plot}(length(pltlabels))
 
-    cprdf = makefinite(rdf)
+    cprdf = makefinite(rdf, maxfun)
 
     plts[1] = @df cprdf fun(:Solver, :fcalls, label=pltlabels[1])
     plts[2] = @df cprdf fun(:Solver, :gcalls, label=pltlabels[2])
@@ -238,9 +244,10 @@ Defaults to performance profiles of f-calls.
 """
 function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
                            t::Symbol = :steppost, xscale::Symbol = :log2,
-                           kwargs...)
+                           ylims = (0,1),
+                           maxfun = x -> 2*maximum(x), kwargs...)
     @assert sym in [:fcalls, :gcalls, :CPUtime, :Iterations]
-    cprdf = makefinite(rdf)
+    cprdf = makefinite(rdf, maxfun)
     plt = if sym == :fcalls
         @> cprdf begin
             @splitby _.Solver
@@ -270,7 +277,7 @@ function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
             @plot
         end
     end
-    return plot(plt; t=t, xscale=xscale, kwargs...)
+    return plot(plt; t=t, xscale=xscale, ylims=ylims, kwargs...)
 end
 
 """
@@ -279,7 +286,8 @@ Defaults to performance profiles of f-calls.
 """
 function createperfprofile(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls;
                            t::Symbol = :steppost, xscale::Symbol = :log2,
+                           ylims=(0,1),
                            kwargs...)
     createperfprofile(createratiodataframe(oruns), sym;
-                      t=t, xscale=xscale, kwargs...)
+                      t=t, xscale=xscale, ylims=ylims, kwargs...)
 end
