@@ -170,8 +170,14 @@ function _nanratio(x, z)
 end
 
 "Create a DataFrame of performance ratios from a dataframe of performance measures."
-function createratiodataframe(dframe::DataFrame)
-    by(dframe, :Problem) do dfr
+function createratiodataframe(dframe::DataFrame, solvers::AbstractVector{<:AbstractString} = Vector{String}(0))
+    if isempty(solvers)
+        idx = Colon()
+    else
+        idx = broadcast(x -> x ∈ solvers, dframe[:Solver])
+    end
+
+    by(dframe[idx, :], :Problem) do dfr
         DataFrame(Solver = dfr[:Solver],
                   fcalls = _nanratio(dfr[:fcalls], dfr[:Success]),
                   gcalls = _nanratio(dfr[:gcalls], dfr[:Success]),
@@ -183,8 +189,9 @@ function createratiodataframe(dframe::DataFrame)
 end
 
 "Create a data frame with performance ratios from a vector of `OptimizationRun`s"
-createratiodataframe(oruns::Vector{OptimizationRun}) =
-    createratiodataframe(createmeasuredataframe(oruns))
+createratiodataframe(oruns::Vector{OptimizationRun},
+                     solvers::AbstractVector{<:AbstractString} = Vector{String}(0)) =
+                         createratiodataframe(createmeasuredataframe(oruns), solvers)
 
 
 """
@@ -224,7 +231,7 @@ createboxplots(rdf::DataFrame, yscale::Symbol = :log2) = createstatplots(rdf,box
 "Create plot of performance metric/ratios grouped by solver. Defaults to violin plots."
 function createstatplots(rdf::DataFrame, fun::Function = violin;
                          yscale = :log2, maxfun = x -> 2*maximum(x),
-                          kwargs...)
+                         kwargs...)
     pltlabels = ["f-calls", "g-calls", "CPU time", "Iterations"]
     plts = Vector{Plots.Plot}(length(pltlabels))
 
@@ -284,10 +291,11 @@ end
 Create performance profiles from a vector of OptimizationRuns.
 Defaults to performance profiles of f-calls.
 """
-function createperfprofile(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls;
+function createperfprofile(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls,
+                           solvers::AbstractVector{<:AbstractString} = Vector{String}(0);
                            t::Symbol = :steppost, xscale::Symbol = :log2,
                            ylims=(0,1),
                            kwargs...)
-    createperfprofile(createratiodataframe(oruns), sym;
+    createperfprofile(createratiodataframe(oruns, solvers), sym;
                       t=t, xscale=xscale, ylims=ylims, kwargs...)
 end
