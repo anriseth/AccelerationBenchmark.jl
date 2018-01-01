@@ -10,6 +10,7 @@ using NLSolversBase
 using Optim, LineSearches
 using DataFrames, DataArrays
 using StatPlots, GroupedErrors
+using CUTEst
 
 export OptimizationRun, TestSetup, TestBench
 

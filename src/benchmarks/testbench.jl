@@ -1,3 +1,7 @@
+# TODO:
+# - Move RandomizeProblem stuff to the main module.
+# - Rename file and module to OACCEL2017
+
 module TestBench
 
 using OptimTestProblems.UnconstrainedProblems
