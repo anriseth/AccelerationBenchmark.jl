@@ -14,7 +14,7 @@ function getopts(ft::FunctionTolerance{T}, maxiter::Int) where T
     return opts
 end
 
-function runproblem(df, x0, solver::Optim.Optimizer, solvername::AbstractString,
+function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::AbstractString,
                     problemname::AbstractString,
                     metrictol::StopTolerance;
                     recordtime::Bool = false, maxiter::Int = 1000)
