@@ -23,6 +23,7 @@ export createruns, createruns!, createmeasures,
 include("types.jl")
 include("api.jl")
 include("utils.jl")
+include("randomizer.jl")
 
 include("benchmarks/testbench.jl")
 

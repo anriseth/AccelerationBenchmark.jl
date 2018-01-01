@@ -38,33 +38,10 @@ function defaulttestsetup()
     #stoptype = :GradientTolRelative
     #stoptol  = 1e-8
     timelog  = false
-    maxiter  = 1500
+    maxiter  = 2000
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter)
 end
 
-
-abstract type RandomizeProblem end
-
-immutable RandomizeInitialx{T<:AbstractArray} <: RandomizeProblem
-    seeds::T
-end
-
-immutable RandomizeInitialxMat{T<:AbstractArray} <: RandomizeProblem
-    seeds::T
-end
-
-Base.length(r::RandomizeProblem) = length(r.seeds)
-
-function randomizeproblem!(prob::OptimizationProblem, rnd::RandomizeInitialx, k::Int)
-    srand(rnd.seeds[k])
-    rand!(prob.initial_x)
-end
-
-function randomizeproblem!(prob::OptimizationProblem, rnd::RandomizeInitialxMat, k::Int)
-    srand(rnd.seeds[k])
-    rand!(prob.initial_x)
-    prob.parameters.mat .= UnconstrainedProblems._randommatrix(length(prob.initial_x), true)
-end
 
 "Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createA(N::Int, seednum::Int)
