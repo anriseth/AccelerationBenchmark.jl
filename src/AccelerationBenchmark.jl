@@ -19,6 +19,9 @@ export createruns, createruns!, createmeasures,
     createviolins, createboxplots, createstatplots,
     createperfprofiles
 
+export RandomizeProblem, RandomizeInitialx, RandomizeInitialxMat,
+    randomizeproblem!
+
 
 include("types.jl")
 include("api.jl")
