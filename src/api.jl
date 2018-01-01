@@ -36,7 +36,7 @@ function optim_problem(op::OptimizationProblem,
         df = TwiceDifferentiable(objective(op), gradient(op),
                                  UnconstrainedProblems.objective_gradient(op),
                                  UnconstrainedProblems.hessian(op),
-                                 initial_x(op)
+                                 initial_x(op),
                                  F, G, H)
     elseif op.isdifferentiable
         df = OnceDifferentiable(objective(op), gradient(op),
