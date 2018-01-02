@@ -14,7 +14,7 @@ using CUTEst
 
 export OptimizationRun, TestSetup, OACCEL2017
 
-export createruns, createruns!, createmeasures,
+export createruns, createmeasures,
     createmeasuredataframe, createratiodataframe,
     createviolins, createboxplots, createstatplots,
     createperfprofiles

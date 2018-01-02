@@ -42,25 +42,15 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
 end
 
 """
-Loop over solvers for problem `prob` and optimize until a given `stoptolerance`.
+Loop over solvers for OptimizationProblem `prob` and optimize until a given `stoptolerance`.
 
 Return vector of `OptimizationRun`s for a given problem.
-Optionally include runtime (runs optimization twice per solver).
+Optionally include runtime (runs optimization multiple times per solver).
 """
-function createruns(prob, problemname::AbstractString,
+function createruns(prob::OptimizationProblem, problemname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                     maxiter::Int = 1000) where T <: Real
-    oruns = Vector{OptimizationRun{Float64,T}}(length(solvers))
-    createruns!(oruns, prob, problemname, solvers, solvernames,
-                tol, stoptype, timelog, maxiter)
-    oruns
-end
-
-function createruns!(oruns, prob, problemname::AbstractString,
-                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                     maxiter::Int = 1000) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
     x0 = initial_x(prob)
     df0 = optim_problem(prob)
@@ -82,6 +72,7 @@ function createruns!(oruns, prob, problemname::AbstractString,
         Base.error("The parameter `stoptype` must be one of :GradientTolRelative, :GradientTol, :FunctionTolRelative, or :FunctionTol.")
     end
 
+    oruns = Vector{OptimizationRun{Float64,T}}(length(solvers))
     for (k, solver) in enumerate(solvers)
         df = optim_problem(prob)
         oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
@@ -93,33 +84,73 @@ function createruns!(oruns, prob, problemname::AbstractString,
 end
 
 """
-Create performance measures of a list of solvers on a problem set.
+Loop over solvers for CUTEst problem `cutestname` and optimize until a given `stoptolerance`.
 
-Returns a vector of `OptimizationRun`s.
+Return vector of `OptimizationRun`s for a given problem.
+Optionally include runtime (runs optimization multiple times per solver).
 """
-function createmeasures(problems::AbstractVector, problemnames::AbstractVector{<:AbstractString},
-                        solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                        maxiter::Int = 1000) where T <: Real
-    np = length(problems); ns = length(solvers)
-    oruns = Vector{OptimizationRun{Float64,T}}(np*ns)
-    #oruns = SharedArray{OptimizationRun{Float64,T}}(np*ns) # TODO: Make it SharedArray?. Problem with preallocation
-
-    # TODO: make it parallel?
-    for prob in 1:np
-        createruns!(view(oruns,(k-1)*ns+1:k*ns), problems[k], problemnames[k],
-                    solvers, solvernames,
-                    tol, stoptype, timelog, maxiter)
-    end
-
+function createruns(cutestname::AbstractString,
+                    solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
+                    tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                    maxiter::Int = 1000;
+                    decode::Bool = false) where T <: Real
+    nlp = CUTEstModel(cutestname, decode=decode)
+    prob = optimizationproblem(nlp)
+    oruns = createruns(prob, prob.name, solvers, solvernames,
+                       tol, stoptype, timelog, maxiter)
+    finalize(nlp)
     return oruns
 end
 
-createmeasures(problems::AbstractVector, problemnames::AbstractVector{<:AbstractString},
+createruns(cutestname::AbstractString, ts::TestSetup) =
+    createruns(cutestname, ts.solvers, ts.solvernames,
+               ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
+
+
+"""
+Create performance measures of a list of solvers on a collection of OptimizationProblems
+
+Returns a vector of `OptimizationRun`s.
+"""
+function createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::AbstractVector{<:AbstractString},
+                        solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
+                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                        maxiter::Int = 1000) where T <: Real
+    oruns = reduce(append!, pmap(k->createruns(problems[k], problemnames[k],
+                                               solvers, solvernames, tol,
+                                               stoptype, timelog, maxiter),
+                                 1:length(problems)))
+    return oruns
+end
+
+createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::AbstractVector{<:AbstractString},
                ts::TestSetup) =
                    createmeasures(problems, problemnames, ts.solvers, ts.solvernames,
                                   ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
 
+"""
+Create performance measures of a list of solvers on a collection of CUTEst problems.
+
+Currently, the CUTEst models are run with the default parameters.
+
+Returns a vector of `OptimizationRun`s.
+"""
+function createmeasures(cutestnames::AbstractVector{<:AbstractString},
+                        solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
+                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                        maxiter::Int = 1000) where T <: Real
+    oruns = reduce(append!, pmap(k->createruns(cutestnames[k],
+                                               solvers, solvernames, tol,
+                                               stoptype, timelog, maxiter;
+                                               decode = false),
+                                 1:length(cutestnames)))
+    return oruns
+end
+
+createmeasures(cutestnames::AbstractVector{<:AbstractString},
+               ts::TestSetup) =
+                   createmeasures(cutestnames, ts.solvers, ts.solvernames,
+                                  ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
 
 
 """

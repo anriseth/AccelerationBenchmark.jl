@@ -21,13 +21,6 @@ function cutest_hess!(nlp, x, h)
     symmetrize!(copy!(h, hess(nlp, x)))
 end
 
-"""
-    initial_x(nlp) -> x0
-
-Return the starting point for an optimization problem `nlp`.
-"""
-initial_x(nlp::CUTEstModel) = nlp.meta.x0
-
 function optim_problem(op::OptimizationProblem,
                        F = real(zero(eltype(initial_x(op)))),
                        G = similar(initial_x(op)),
@@ -50,25 +43,16 @@ function optim_problem(op::OptimizationProblem,
     return df
 end
 
-function optim_problem(nlp::CUTEstModel)
-    # TODO: is there a way to check whether the hessian is available?
-    # It seems like all the non-constrained CUTEst problems are twice differentiable?
-    if nlp.meta.ncon > 0
-        error("We currently only support unconstrained CUTEst models.")
-    end
+"""
+Look up a the best (known) minimum of a CUTEst model.
 
-    # TODO: use sparse Hessian cache?
-    d = TwiceDifferentiable(x -> obj(nlp, x),
-                            (g, x) -> grad!(nlp, x, g),
-                            (g, x) -> cutest_fg!(nlp, x, g),
-                            (h, x) -> cutest_hess!(nlp, x, h),
-                            initial_x(nlp))
-    return d
-end
-
-"Returns the best-known minimum value of a CUTEst model stored"
+Returns (minimizer, minimum)
+"""
 function minimumlookup(nlp::CUTEstModel)
-    return NaN
+    # TODO: Create approximate minimum
+    # TODO: Should we store the minimizer, or just give it back a NaN?
+    # TODO: Should the NaN-minimizer be of size nlp.meta.nvar?
+    return [NaN], NaN
 end
 
 function optimizationproblem(nlp::CUTEstModel)
@@ -77,14 +61,15 @@ function optimizationproblem(nlp::CUTEstModel)
     if nlp.meta.ncon > 0
         error("We currently only support unconstrained CUTEst models.")
     end
-    minval = minimumlookup(nlp)
+    minimizer, minimum = minimumlookup(nlp)
     op = OptimizationProblem("$(nlp.meta.name)-$(nlp.meta.nvar)",
                              x->obj(nlp, x),
                              (g, x)->copy!(g, grad(nlp, x)),
                              (g, x)->cutest_fg!(nlp, x, g),
                              (h, x)->cutest_hess!(nlp, x, h),
-                             initial_x(nlp),
-                             minval,
+                             nlp.meta.x0,
+                             minimizer,
+                             minimum,
                              true,
                              true)
 end
