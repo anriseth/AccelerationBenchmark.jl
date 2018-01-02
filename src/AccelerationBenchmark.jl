@@ -12,7 +12,7 @@ using DataFrames, DataArrays
 using StatPlots, GroupedErrors
 using CUTEst
 
-export OptimizationRun, TestSetup, TestBench
+export OptimizationRun, TestSetup, OACCEL2017
 
 export createruns, createruns!, createmeasures,
     createmeasuredataframe, createratiodataframe,
@@ -28,6 +28,6 @@ include("api.jl")
 include("utils.jl")
 include("randomizer.jl")
 
-include("benchmarks/testbench.jl")
+include("benchmarks/oaccel2017.jl")
 
 end # module

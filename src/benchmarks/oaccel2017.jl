@@ -1,8 +1,9 @@
-# TODO:
-# - Move RandomizeProblem stuff to the main module.
-# - Rename file and module to OACCEL2017
-
-module TestBench
+#=
+This code can be used to replicate the test results from
+A.N. Riseth - "Objective acceleration for unconstrained optimization", 2017.
+https://arxiv.org/abs/1710.05200
+=#
+module OACCEL2017
 
 using OptimTestProblems.UnconstrainedProblems
 using AccelerationBenchmark

@@ -1,4 +1,4 @@
-@everywhere using AccelerationBenchmark.TestBench
+@everywhere using AccelerationBenchmark.OACCEL2017
 
 tests = [(:A,100), (:A,200),
          (:B,100), (:B,200),
@@ -11,4 +11,4 @@ tests = [(:A,100), (:A,200),
          (:E, 50000), (:E, 100000)]
 
 seeds = 0:999
-TestBench.runmany(tests,seeds)
+OACCEL2017.runmany(tests,seeds)
