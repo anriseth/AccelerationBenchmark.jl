@@ -59,7 +59,7 @@ function optimizationproblem(nlp::CUTEstModel)
     # TODO: Set up database of minimum values for CUTEst problems
     # It seems like all the non-constrained CUTEst problems are twice differentiable?
     if nlp.meta.ncon > 0
-        error("We currently only support unconstrained CUTEst models.")
+        warn("We currently only support unconstrained CUTEst models, but $(nlp.meta.name) has `ncon > 0`.")
     end
     minimizer, minimum = minimumlookup(nlp)
     op = OptimizationProblem("$(nlp.meta.name)-$(nlp.meta.nvar)",

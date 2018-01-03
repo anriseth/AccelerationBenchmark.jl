@@ -23,23 +23,32 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
     f0 = value_gradient!(df, x0)
     g0norm = norm(gradient(df), Inf)
 
-    r = optimize(df, x0, solver, opts)
-
-    if recordtime
-        # TODO: Do this with BenchmarkTools?
-        runtime = @elapsed optimize(df, x0, solver, opts)
-        runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
-    else
-        runtime = NaN
-    end
-    #runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
-
     sname = isempty(solvername) ? summary(solver) : solvername
-    OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
-                    Optim.h_calls(r), runtime, Optim.minimum(r), f0,
-                    Optim.g_residual(r), g0norm, solvername, problemname,
-                    metrictol)
+
+    orun =  OptimizationRun(0, 0, 0, 0, 0.0, f0, f0, g0norm, g0norm,
+                            sname, problemname, metrictol)
+    try
+        r = optimize(df, x0, solver, opts)
+
+        if recordtime
+            # TODO: Do this with BenchmarkTools?
+            runtime = @elapsed optimize(df, x0, solver, opts)
+            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
+            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
+        else
+            runtime = NaN
+        end
+        #runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
+        orun = OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
+                               Optim.h_calls(r), runtime, Optim.minimum(r), f0,
+                               Optim.g_residual(r), g0norm, sname, problemname,
+                               metrictol)
+    catch e
+        println(e)
+    end
+    return orun
 end
+
 
 """
 Loop over solvers for OptimizationProblem `prob` and optimize until a given `stoptolerance`.
@@ -50,8 +59,10 @@ Optionally include runtime (runs optimization multiple times per solver).
 function createruns(prob::OptimizationProblem, problemname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
-                    maxiter::Int = 1000) where T <: Real
+                    maxiter::Int = 1000;
+                    verbose::Bool = true) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
+    verbose && println("Running $problemname ...")
     x0 = initial_x(prob)
     df0 = optim_problem(prob)
     f0 = value_gradient!(df0, x0)
@@ -75,9 +86,14 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
     oruns = Vector{OptimizationRun{Float64,T}}(length(solvers))
     for (k, solver) in enumerate(solvers)
         df = optim_problem(prob)
-        oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
-                              problemname, metrictol;
-                              recordtime=timelog, maxiter = maxiter)
+        try
+            oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
+                                  problemname, metrictol;
+                                  recordtime=timelog, maxiter = maxiter)
+        catch probsolve
+            println(probsolve)
+            #rethrow()
+        end
     end
 
     return oruns
@@ -93,11 +109,14 @@ function createruns(cutestname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
                     maxiter::Int = 1000;
-                    decode::Bool = false) where T <: Real
+                    decode::Bool = false,
+                    verbose::Bool = true) where T <: Real
+    verbose && println("Loading $cutestname ...")
     nlp = CUTEstModel(cutestname, decode=decode)
     prob = optimizationproblem(nlp)
     oruns = createruns(prob, prob.name, solvers, solvernames,
-                       tol, stoptype, timelog, maxiter)
+                       tol, stoptype, timelog, maxiter;
+                       verbose = verbose)
     finalize(nlp)
     return oruns
 end
