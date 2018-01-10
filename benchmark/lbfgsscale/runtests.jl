@@ -39,6 +39,9 @@ function lstests()
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,time_limit)
 end
 
+testset = lstests()
+savebase = "data/"
+
 if run_tests_more
     tests = [(:A,100), (:A,200),
              (:B,100), (:B,200),
@@ -51,9 +54,9 @@ if run_tests_more
              (:E, 50000), (:E, 100000)]
     seeds = 0:99
 
-    OACCEL2017.runmany(tests,seeds, lstests();
+    OACCEL2017.runmany(tests,seeds, testset;
                        savejld = savejld, savecsv = savecsv,
-                       savebase = "data/")
+                       savebase = savebase)
 end
 
 
@@ -62,8 +65,7 @@ if run_tests_cutest
     max_var = 1000
     cutestnames = sort(CUTEst.select(contype=:unc, max_var=max_var,
                                      min_var=min_var))
-    splice!(cutestnames, findfirst(cutestnames,"KOWOSBNE")) # This is actually not unconstrained
-    oruns = createmeasures(cutestnames, lstests())
+    oruns = createmeasures(cutestnames, testset)
     mdf = createmeasuredataframe(oruns)
 
     if savejld
