@@ -1,7 +1,6 @@
 using AccelerationBenchmark, DataFrames, CSV, Optim, LineSearches, CUTEst, JLD
-create_more_tests = false
-create_cutest_tests = false
-
+run_tests_more = true # Run the Moré et al. tests from the O-ACCEL paper
+run_tests_cutest = true # Run CUTEst tests
 
 savejld = true
 savecsv = true
@@ -39,7 +38,7 @@ function lstests()
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter)
 end
 
-if create_more_tests
+if run_tests_more
     tests = [(:A,100), (:A,200),
              (:B,100), (:B,200),
              (:C,100), (:C,200),
@@ -51,11 +50,13 @@ if create_more_tests
              (:E, 50000), (:E, 100000)]
     seeds = 0:99
 
-    OACCEL2017.runmany(tests,seeds, lstests())
+    OACCEL2017.runmany(tests,seeds, lstests();
+                       savejld = savejld, savecsv = savecsv,
+                       savebase = "data/")
 end
 
 
-if create_cutests_tests
+if run_tests_cutest
     min_var = 0
     max_var = 1000
     cutestnames = sort(CUTEst.select(contype=:unc, max_var=max_var,
