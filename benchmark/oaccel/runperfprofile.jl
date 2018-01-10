@@ -11,5 +11,5 @@ rdf = AccelerationBenchmark.createratiodataframe(mdf)
 # Alternatively, we can create fevals_AG.csv and run it through "mergealldata.jl" with BenchmarkProfiles.
 
 rdf[:fcalls] .=  NaNMath.log2.(rdf[:fcalls])
-plt = AccelerationBenchmark.createperfprofile(rdf,:fcalls; xscale=:linear,
+plt = AccelerationBenchmark.createperfprofiles(rdf,:fcalls; xscale=:linear,
                                               xlabel=L"$\tau$ ($\log_2$ scale)")

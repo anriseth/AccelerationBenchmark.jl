@@ -214,8 +214,9 @@ end
 
 " Return performance ratios x / minimum(x), but set elements where `z[k] = false` to `Inf`"
 function _nanratio(x, z)
-    retval = x / minimum(x)
-    retval[.!z .| isnan.(retval) .| isna.(retval)] = Inf # Should we use NA here?
+    retval = x ./ minimum(x) # ./ deals with some issues
+    # Bool needed since introducing Missings.Missing data type
+    retval[Bool.(.!z .| isnan.(retval) .| ismissing.(retval))] = Inf # Should we use NA here?
     return retval
 end
 
@@ -268,7 +269,6 @@ function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
         else
             rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = -1.0
         end
-
     end
 end
 
@@ -299,7 +299,7 @@ end
 Create performance profiles from a DataFrame of performance ratios.
 Defaults to performance profiles of f-calls.
 """
-function createperfprofile(rdf::DataFrame, sym::Symbol = :fcalls;
+function createperfprofiles(rdf::DataFrame, sym::Symbol = :fcalls;
                            t::Symbol = :steppost, xscale::Symbol = :log2,
                            ylims = (0,1),
                            maxfun = x -> 2*maximum(x), kwargs...)
@@ -341,11 +341,11 @@ end
 Create performance profiles from a vector of OptimizationRuns.
 Defaults to performance profiles of f-calls.
 """
-function createperfprofile(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls,
+function createperfprofiles(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls,
                            solvers::AbstractVector{<:AbstractString} = Vector{String}(0);
                            t::Symbol = :steppost, xscale::Symbol = :log2,
                            ylims=(0,1),
                            kwargs...)
-    createperfprofile(createratiodataframe(oruns, solvers), sym;
+    createperfprofiles(createratiodataframe(oruns, solvers), sym;
                       t=t, xscale=xscale, ylims=ylims, kwargs...)
 end
