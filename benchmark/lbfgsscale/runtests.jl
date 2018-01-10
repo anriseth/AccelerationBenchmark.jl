@@ -1,9 +1,9 @@
 using AccelerationBenchmark, DataFrames, CSV, Optim, LineSearches, CUTEst, JLD
-run_tests_more = true # Run the Moré et al. tests from the O-ACCEL paper
-run_tests_cutest = true # Run CUTEst tests
+const run_tests_more = true # Run the Moré et al. tests from the O-ACCEL paper
+const run_tests_cutest = true # Run CUTEst tests
 
-savejld = true
-savecsv = true
+const savejld = true
+const savecsv = true
 
 function lstests()
     lsm = MoreThuente()
@@ -35,7 +35,8 @@ function lstests()
     stoptol  = 1e-10
     timelog  = true
     maxiter  = 5000
-    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter)
+    time_limit = NaN
+    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,time_limit)
 end
 
 if run_tests_more

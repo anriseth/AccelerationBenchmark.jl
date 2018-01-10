@@ -40,7 +40,8 @@ function defaulttestsetup()
     #stoptol  = 1e-8
     timelog  = false
     maxiter  = 2000
-    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter)
+    time_limit = NaN
+    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,time_limit)
 end
 
 
@@ -134,7 +135,8 @@ function getoruns(seed::Int, N::Int, cfun, ts::TestSetup, showname::Bool)
     showname && println("$probname")
     createruns(prob, probname,
                ts.solvers, ts.solvernames,
-               ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter)
+               ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
+               time_limit = ts.time_limit)
 end
 
 """

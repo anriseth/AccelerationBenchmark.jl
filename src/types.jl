@@ -88,11 +88,12 @@ end
 
 
 "Collection of options used create performance measures."
-immutable TestSetup{T<:Real, Ts<:AbstractVector, Tn<:AbstractVector}
+immutable TestSetup{T<:Real, Ts<:AbstractVector, Tn<:AbstractVector, Tl<:Real}
     solvers::Ts
     solvernames::Tn
     stoptype::Symbol
     stoptol::T
     timelog::Bool
     maxiter::Int
+    timelimit::Tl # Soft time limit for each optimize call
 end
