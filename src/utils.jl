@@ -131,7 +131,7 @@ end
 createruns(cutestname::AbstractString, ts::TestSetup) =
     createruns(cutestname, ts.solvers, ts.solvernames,
                ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-               time_limit = ts.time_limit)
+               time_limit = ts.timelimit)
 
 
 """
@@ -156,7 +156,7 @@ createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::Ab
                ts::TestSetup) =
                    createmeasures(problems, problemnames, ts.solvers, ts.solvernames,
                                   ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-                                  time_limit = ts.time_limit)
+                                  time_limit = ts.timelimit)
 
 """
 Create performance measures of a list of solvers on a collection of CUTEst problems.
@@ -182,7 +182,7 @@ createmeasures(cutestnames::AbstractVector{<:AbstractString},
                ts::TestSetup) =
                    createmeasures(cutestnames, ts.solvers, ts.solvernames,
                                   ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-                                  time_limit = ts.time_limit)
+                                  time_limit = ts.timelimit)
 
 
 """

@@ -35,8 +35,8 @@ function lstests()
     stoptol  = 1e-10
     timelog  = true
     maxiter  = 5000
-    time_limit = NaN
-    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,time_limit)
+    timelimit = NaN
+    TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)
 end
 
 testset = lstests()
