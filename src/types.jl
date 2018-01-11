@@ -93,7 +93,7 @@ immutable TestSetup{T<:Real, Ts<:AbstractVector, Tn<:AbstractVector, Tl<:Real}
     solvernames::Tn
     stoptype::Symbol
     stoptol::T
-    timelog::Bool
+    timelog::Int # Number of calls to optimize to record timings. timelog = 0 calls optimize once, but does not record the timing
     maxiter::Int
     timelimit::Tl # Soft time limit for each optimize call
 end

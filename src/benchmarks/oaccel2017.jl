@@ -38,7 +38,7 @@ function defaulttestsetup()
     stoptol  = 1e-10
     #stoptype = :GradientTolRelative
     #stoptol  = 1e-8
-    timelog  = false
+    timelog  = 0 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
     maxiter  = 2000
     timelimit = NaN
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)

@@ -22,7 +22,7 @@ end
 function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::AbstractString,
                     problemname::AbstractString,
                     metrictol::StopTolerance;
-                    recordtime::Bool = false, maxiter::Int = 1000,
+                    numrecordtime::Int = 0, maxiter::Int = 1000,
                     time_limit::Real = NaN)
     opts = getopts(metrictol, maxiter, time_limit)
 
@@ -34,17 +34,14 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
     orun =  OptimizationRun(0, 0, 0, 0, 0.0, f0, f0, g0norm, g0norm,
                             sname, problemname, metrictol)
     try
+        local t0 = time_ns()
         r = optimize(df, x0, solver, opts)
-
-        if recordtime
+        runtime = numrecordtime > 0 ?  (time_ns() - t0) / 1e9  : NaN
+        for runtime = 2:numrecordtime
             # TODO: Do this with BenchmarkTools?
-            runtime = @elapsed optimize(df, x0, solver, opts)
-            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
-            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Slight improvement on garbage collection?
-        else
-            runtime = NaN
+            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Deals with garbage collection etc?
         end
-        #runtime = recordtime ? (@elapsed optimize(df, x0, solver, opts)) : NaN
+
         orun = OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
                                Optim.h_calls(r), runtime, Optim.minimum(r), f0,
                                Optim.g_residual(r), g0norm, sname, problemname,
@@ -64,7 +61,7 @@ Optionally include runtime (runs optimization multiple times per solver).
 """
 function createruns(prob::OptimizationProblem, problemname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                    tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                    tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                     maxiter::Int = 1000; time_limit::Real = NaN,
                     verbose::Bool = true) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
@@ -95,7 +92,7 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
         try
             oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
                                   problemname, metrictol;
-                                  recordtime=timelog, maxiter = maxiter,
+                                  numrecordtime=timelog, maxiter = maxiter,
                                   time_limit = time_limit)
         catch probsolve
             println(probsolve)
@@ -114,7 +111,7 @@ Optionally include runtime (runs optimization multiple times per solver).
 """
 function createruns(cutestname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                    tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                    tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                     maxiter::Int = 1000; time_limit::Real = NaN,
                     decode::Bool = false,
                     verbose::Bool = true) where T <: Real
@@ -141,7 +138,7 @@ Returns a vector of `OptimizationRun`s.
 """
 function createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::AbstractVector{<:AbstractString},
                         solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                         maxiter::Int = 1000;
                         time_limit::Real = NaN) where T <: Real
     oruns = reduce(append!, pmap(k->createruns(problems[k], problemnames[k],
@@ -167,7 +164,7 @@ Returns a vector of `OptimizationRun`s.
 """
 function createmeasures(cutestnames::AbstractVector{<:AbstractString},
                         solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
-                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Bool = false,
+                        tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                         maxiter::Int = 1000; time_limit::Real = NaN) where T <: Real
     oruns = reduce(append!, pmap(k->createruns(cutestnames[k],
                                                solvers, solvernames, tol,

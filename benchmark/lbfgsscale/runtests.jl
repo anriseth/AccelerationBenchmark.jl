@@ -33,7 +33,7 @@ function lstests()
     #stoptol  = 1e-10
     stoptype = :GradientTolRelative
     stoptol  = 1e-10
-    timelog  = true
+    timelog  = 3 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
     maxiter  = 5000
     timelimit = NaN
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)
