@@ -277,10 +277,11 @@ the rule `maxfun` (default x->2*maximum(x), taken over finite values).
 function makefinite!(rdf::DataFrame, maxfun = x-> 2*maximum(x))
     pltvals = [:fcalls, :gcalls,:CPUtime,:Iterations]
     for k in 1:length(pltvals)
-        if any(isfinite, rdf[pltvals[k]])
-            rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = maxfun(rdf[isfinite.(rdf[pltvals[k]]), pltvals[k]])
+        finidx = convert(Array{Bool}, isfinite.(rdf[pltvals[k]]))
+        if any(finidx)
+            rdf[.!finidx, pltvals[k]] = maxfun(rdf[finidx,pltvals[k]])
         else
-            rdf[!isfinite.(rdf[pltvals[k]]), pltvals[k]] = -1.0
+            rdf[.!finidx, pltvals[k]] = -1.0
         end
     end
 end

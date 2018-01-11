@@ -1,4 +1,5 @@
-using JLD, DataFrames, AccelerationBenchmark, StatPlots, NaNMath, LaTeXStrings
+using AccelerationBenchmark
+using JLD, DataFrames, StatPlots, NaNMath, LaTeXStrings
 
 searchdir(path,key) = filter(x->contains(x,key), readdir(path))
 mdf = reduce(append!, [load(fname, "mdf") for fname in ["data/"*fname for fname in searchdir("data", "jld")]])

@@ -1,4 +1,5 @@
-using JLD, DataFrames, AccelerationBenchmark, StatPlots
+using AccelerationBenchmark
+using JLD, DataFrames,  StatPlots
 pyplot()
 
 searchdir(path,key) = filter(x->contains(x,key), readdir(path))
@@ -18,7 +19,7 @@ function more_tests()
     for sym in syms
         rdf[sym] .=  NaNMath.log2.(rdf[sym])
     end
-    maxfun(x) = x->1.1maximum(x)
+    maxfun(x) = 1.1maximum(x)
 
     pltf = AccelerationBenchmark.createperfprofiles(rdf, :fcalls; xlabel="f-calls, log₂-scale",
                                                     xscale=:identity, maxfun = maxfun)
@@ -46,7 +47,7 @@ function cutest_tests(fname::AbstractString = "data/cutest_0_1000.jld",
     for sym in syms
         rdf[sym] .=  NaNMath.log2.(rdf[sym])
     end
-    maxfun(x) = x->1.1maximum(x)
+    maxfun(x) = 1.1maximum(x)
 
     pltf = AccelerationBenchmark.createperfprofiles(rdf, :fcalls; xlabel="f-calls, log₂-scale",
                                                     xscale=:identity, maxfun = maxfun)
