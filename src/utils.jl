@@ -66,10 +66,17 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
                     verbose::Bool = true) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
     verbose && println("Running $problemname ...")
-    x0 = initial_x(prob)
-    df0 = optim_problem(prob)
-    f0 = value_gradient!(df0, x0)
-    g0norm = norm(gradient(df0), Inf)
+    local x0, f0, g0norm # Ensure variables stay in method scope
+    try
+        x0 = initial_x(prob)
+        df0 = optim_problem(prob)
+        f0 = value_gradient!(df0, x0)
+        g0norm = norm(gradient(df0), Inf)
+    catch e
+        warn(e)
+        return Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
+    end
+
     if stoptype == :GradientTolRelative
         metrictol = GradientTolerance(tol,g0norm)
     elseif stoptype == :GradientTol
@@ -86,17 +93,19 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
         Base.error("The parameter `stoptype` must be one of :GradientTolRelative, :GradientTol, :FunctionTolRelative, or :FunctionTol.")
     end
 
-    oruns = Vector{OptimizationRun{Float64,T}}(length(solvers))
+    oruns = Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(length(solvers))
     for (k, solver) in enumerate(solvers)
         df = optim_problem(prob)
         try
-            oruns[k] = runproblem(df, initial_x(prob), solver, solvernames[k],
+            oruns[k] = runproblem(df, x0, solver, solvernames[k],
                                   problemname, metrictol;
                                   numrecordtime=timelog, maxiter = maxiter,
                                   time_limit = time_limit)
         catch probsolve
-            println(probsolve)
-            #rethrow()
+            warn(probsolve)
+            oruns[k] = OptimizationRun(0,0,0,0,zero(time_ns()),
+                                       f0,f0,g0norm,g0norm,
+                                       solvernames[k],problemname,false)
         end
     end
 
@@ -116,15 +125,20 @@ function createruns(cutestname::AbstractString,
                     decode::Bool = false,
                     verbose::Bool = true) where T <: Real
     verbose && println("Loading $cutestname ...")
-    nlp = CUTEstModel(cutestname, decode=decode)
-    prob = optimizationproblem(nlp)
-    oruns = createruns(prob, prob.name, solvers, solvernames,
-                       tol, stoptype, timelog, maxiter;
-                       verbose = verbose, time_limit = time_limit)
-    finalize(nlp)
+    local oruns
+    try
+        nlp = CUTEstModel(cutestname, decode=decode)
+        prob = optimizationproblem(nlp)
+        oruns = createruns(prob, prob.name, solvers, solvernames,
+                           tol, stoptype, timelog, maxiter;
+                           verbose = verbose, time_limit = time_limit)
+        finalize(nlp)
+    catch e
+        warn(e)
+        oruns = Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
+    end
     return oruns
 end
-
 createruns(cutestname::AbstractString, ts::TestSetup) =
     createruns(cutestname, ts.solvers, ts.solvernames,
                ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
@@ -311,9 +325,9 @@ Create performance profiles from a DataFrame of performance ratios.
 Defaults to performance profiles of f-calls.
 """
 function createperfprofiles(rdf::DataFrame, sym::Symbol = :fcalls;
-                           t::Symbol = :steppost, xscale::Symbol = :log2,
-                           ylims = (0,1),
-                           maxfun = x -> 2*maximum(x), kwargs...)
+                            t::Symbol = :steppost, xscale::Symbol = :log2,
+                            ylims = (0,1),
+                            maxfun = x -> 2*maximum(x), kwargs...)
     @assert sym in [:fcalls, :gcalls, :CPUtime, :Iterations]
     cprdf = makefinite(rdf, maxfun)
     plt = if sym == :fcalls
@@ -353,10 +367,10 @@ Create performance profiles from a vector of OptimizationRuns.
 Defaults to performance profiles of f-calls.
 """
 function createperfprofiles(oruns::Vector{OptimizationRun}, sym::Symbol = :fcalls,
-                           solvers::AbstractVector{<:AbstractString} = Vector{String}(0);
-                           t::Symbol = :steppost, xscale::Symbol = :log2,
-                           ylims=(0,1),
-                           kwargs...)
+                            solvers::AbstractVector{<:AbstractString} = Vector{String}(0);
+                            t::Symbol = :steppost, xscale::Symbol = :log2,
+                            ylims=(0,1),
+                            kwargs...)
     createperfprofiles(createratiodataframe(oruns, solvers), sym;
-                      t=t, xscale=xscale, ylims=ylims, kwargs...)
+                       t=t, xscale=xscale, ylims=ylims, kwargs...)
 end
