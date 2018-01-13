@@ -108,6 +108,7 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
                                        solvernames[k],problemname,false)
         end
     end
+    verbose && println("Finished $problemname.")
 
     return oruns
 end

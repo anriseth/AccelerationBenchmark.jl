@@ -24,7 +24,8 @@ end
 function optim_problem(op::OptimizationProblem,
                        F = real(zero(eltype(initial_x(op)))),
                        G = similar(initial_x(op)),
-                       H = NLSolversBase.alloc_H(initial_x(op)))
+                       H = spzeros(eltype(initial_x(op)), size(initial_x(op))...),
+                       ) # TODO: How do we choose sparse vs full for H?
     if op.istwicedifferentiable
         df = TwiceDifferentiable(objective(op), gradient(op),
                                  UnconstrainedProblems.objective_gradient(op),
