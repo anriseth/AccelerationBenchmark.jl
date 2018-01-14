@@ -6,7 +6,9 @@ searchdir(path,key) = filter(x->contains(x,key), readdir(path))
 
 "Performance profiles from the Moré tests"
 function more_tests(;xmax::Number = NaN, solvers = Vector{String}(0))
-    mdf = reduce(append!, [load(fname, "mdf") for fname in ["data/"*fname for fname in searchdir("data", "00.jld")]])
+    fnames = ["data/"*fname for fname in searchdir("data", "jld")]
+    fnames = fnames[.!contains.(fnames, "cutest")]
+    mdf = reduce(append!, [load(fname, "mdf") for fname in fnames])
     rdf = AccelerationBenchmark.createratiodataframe(mdf, solvers)
 
     # TODO: GroupedErrors is using a uniform spread in the x-values (\tau-values),
@@ -71,7 +73,7 @@ end
 #solvers=["O-ACCEL-10", "GD"]
 plt = more_tests(;solvers=solvers)
 savefig(plt, "perfprof_more_tests.svg")
-avefig(plt, "perfprof_more_tests.png")
+savefig(plt, "perfprof_more_tests.png")
 
 
 minvar = 20; maxvar = 100000

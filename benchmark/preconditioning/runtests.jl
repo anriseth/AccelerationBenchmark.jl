@@ -1,11 +1,12 @@
-@everywhere using AccelerationBenchmark, DataFrames, CSV, Optim, LineSearches, CUTEst, JLD
+@everywhere using AccelerationBenchmark
+using DataFrames, CSV, Optim, LineSearches, CUTEst, JLD
 run_tests_more = true # Run the Moré et al. tests from the O-ACCEL paper
 run_tests_cutest = true # Run CUTEst tests
 
 savejld = true
 savecsv = true
 
-function lstests()
+function gettestset()
     wmax = 20
     m = 10
     ag = InitialStatic(alpha=1.0, scaled=false)
@@ -49,11 +50,11 @@ function lstests()
     stoptol  = 1e-8
     timelog  = 2 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
     maxiter  = 10000
-    timelimit = 60.0
+    timelimit = 65.0
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)
 end
 
-testset = lstests()
+testset = gettestset()
 savebase = "data/"
 
 if run_tests_more
