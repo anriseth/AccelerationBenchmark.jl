@@ -19,6 +19,46 @@ function getopts(ft::FunctionTolerance{T}, maxiter::Int, time_limit::Real = NaN)
     return opts
 end
 
+"Return time elapsed and result of expression"
+macro my_elapsed(ex)
+    quote
+        local t0 = time_ns()
+        local val = $(esc(ex))
+        (time_ns()-t0)/1e9, val
+    end
+end
+
+function _reset_f!(d::NLSolversBase.AbstractObjective)
+    d.f_calls .= 0
+    d.F = typeof(d.F)(NaN)
+    d.x_f .= eltype(d.x_f)(NaN)
+end
+
+function _reset_df!(d::NLSolversBase.AbstractObjective)
+    d.df_calls .= 0
+    d.DF .= eltype(d.DF)(NaN)
+    d.x_df .= eltype(d.x_df)(NaN)
+end
+
+function _reset_h!(d::NLSolversBase.AbstractObjective)
+    d.h_calls .= 0
+    d.H .= eltype(d.H)(NaN)
+    d.x_h .= eltype(d.x_h)(NaN)
+end
+
+reset!(d::NonDifferentiable)  = _reset_f!(d)
+function reset!(d::OnceDifferentiable)
+    _reset_f!(d)
+    _reset_df!(d)
+end
+
+function reset!(d::TwiceDifferentiable)
+    _reset_f!(d)
+    _reset_df!(d)
+    _reset_h!(d)
+end
+
+
 function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::AbstractString,
                     problemname::AbstractString,
                     metrictol::StopTolerance;
@@ -28,18 +68,29 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
 
     f0 = value_gradient!(df, x0)
     g0norm = norm(gradient(df), Inf)
-
-    sname = isempty(solvername) ? summary(solver) : solvername
-
-    orun =  OptimizationRun(0, 0, 0, 0, 0.0, f0, f0, g0norm, g0norm,
-                            sname, problemname, metrictol)
     try
-        local t0 = time_ns()
-        r = optimize(df, x0, solver, opts)
-        runtime = numrecordtime > 0 ?  (time_ns() - t0) / 1e9  : NaN
-        for runtime = 2:numrecordtime
+        # TODO: Does this help for precompilation at all?
+        # This can be unnecessarily costly if the line search goes bananas
+        optimize(df, x0, solver, Optim.Options(iterations=1))
+    catch e
+        warn(e)
+    end
+
+    reset!(df) # Get correct f_calls numbering
+    sname = isempty(solvername) ? summary(solver) : solvername
+    orun = OptimizationRun(0, 0, 0, 0, 0.0, f0, f0, g0norm, g0norm,
+                           sname, problemname, metrictol)
+    try
+        runtime, r = @my_elapsed optimize(df, x0, solver, opts)
+        @show Optim.f_calls(r), Optim.g_calls(r)
+        for k = 2:numrecordtime
             # TODO: Do this with BenchmarkTools?
-            runtime = min(runtime, @elapsed optimize(df, x0, solver, opts)) # Deals with garbage collection etc?
+            reset!(df) # Reset df to get f_calls etc. correct
+            tmptime, tmpr = @my_elapsed optimize(df, x0, solver, opts)
+            if tmptime < runtime
+                runtime = tmptime
+                r = tmpr # In case previous r hit time_limit
+            end
         end
 
         orun = OptimizationRun(Optim.iterations(r), Optim.f_calls(r), Optim.g_calls(r),
@@ -47,7 +98,7 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
                                Optim.g_residual(r), g0norm, sname, problemname,
                                metrictol)
     catch e
-        println(e)
+        warn(e)
     end
     return orun
 end
@@ -103,7 +154,7 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
                                   time_limit = time_limit)
         catch probsolve
             warn(probsolve)
-            oruns[k] = OptimizationRun(0,0,0,0,zero(time_ns()),
+            oruns[k] = OptimizationRun(0,0,0,0,zero(time_ns()/1e9),
                                        f0,f0,g0norm,g0norm,
                                        solvernames[k],problemname,false)
         end
