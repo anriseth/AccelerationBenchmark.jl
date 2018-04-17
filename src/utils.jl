@@ -28,36 +28,6 @@ macro my_elapsed(ex)
     end
 end
 
-function _reset_f!(d::NLSolversBase.AbstractObjective)
-    d.f_calls .= 0
-    d.F = typeof(d.F)(NaN)
-    d.x_f .= eltype(d.x_f)(NaN)
-end
-
-function _reset_df!(d::NLSolversBase.AbstractObjective)
-    d.df_calls .= 0
-    d.DF .= eltype(d.DF)(NaN)
-    d.x_df .= eltype(d.x_df)(NaN)
-end
-
-function _reset_h!(d::NLSolversBase.AbstractObjective)
-    d.h_calls .= 0
-    d.H .= eltype(d.H)(NaN)
-    d.x_h .= eltype(d.x_h)(NaN)
-end
-
-reset!(d::NonDifferentiable)  = _reset_f!(d)
-function reset!(d::OnceDifferentiable)
-    _reset_f!(d)
-    _reset_df!(d)
-end
-
-function reset!(d::TwiceDifferentiable)
-    _reset_f!(d)
-    _reset_df!(d)
-    _reset_h!(d)
-end
-
 
 function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::AbstractString,
                     problemname::AbstractString,

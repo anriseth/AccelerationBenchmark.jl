@@ -10,6 +10,7 @@ function gettestset()
     wmax = 20
     m = 10
     ag = InitialStatic(alpha=1.0, scaled=false)
+    agscaled = InitialStatic(alpha=1e-4, scaled=true)
 
     # delta and sigma are the Wolfe condition coefficients
     lshz = HagerZhang(delta = 0.1, sigma = 0.9) # Defaults
@@ -20,9 +21,9 @@ function gettestset()
     lsgd = lshz
     lsacc = lshz
 
-    preconls = Static(alpha=1e-4, scaled=true)
+    preconls = Static(alpha=1.0)
     gdprecon = GradientDescent(linesearch = preconls,
-                               alphaguess = ag) # alphaguess unnecessary?
+                               alphaguess = agscaled)
 
     solvers = [
         LBFGS(alphaguess = ag, linesearch = lslbfgs, scaleinvH0 = true, m = m),
