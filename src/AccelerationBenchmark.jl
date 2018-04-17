@@ -1,8 +1,4 @@
-#=
-TODO:
--
-=#
-
+__precompile__()
 module AccelerationBenchmark
 
 using OptimTestProblems.UnconstrainedProblems
