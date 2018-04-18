@@ -28,13 +28,13 @@ function gettestset()
     solvers = [
         LBFGS(alphaguess = ag, linesearch = lslbfgs, scaleinvH0 = true, m = m),
         OACCEL(alphaguess = ag, linesearch = lsacc,
-               precon = gdprecon, wmax = wmax),
+               nlprecon = gdprecon, wmax = wmax),
         NGMRES(alphaguess = ag, linesearch = lsacc,
-               precon = gdprecon, wmax = wmax),
+               nlprecon = gdprecon, wmax = wmax),
         OACCEL(alphaguess = ag, linesearch = lsacc,
-               precon = gdprecon, wmax = m),
+               nlprecon = gdprecon, wmax = m),
         NGMRES(alphaguess = ag, linesearch = lsacc,
-               precon = gdprecon, wmax = m),
+               nlprecon = gdprecon, wmax = m),
         GradientDescent(alphaguess = ag, linesearch = lsgd)
     ]
     solvernames = [

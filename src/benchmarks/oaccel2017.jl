@@ -26,10 +26,10 @@ function defaulttestsetup()
 
     solvers = [
         LBFGS(alphaguess = ag, linesearch = ls, m = 5, scaleinvH0=true),
-        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdls),
-        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdst),
-        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdls),
-        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, precon = gdst),
+        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, nlprecon = gdls),
+        NGMRES(alphaguess = ag, linesearch = ls, wmax = 20, nlprecon = gdst),
+        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, nlprecon = gdls),
+        OACCEL(alphaguess = ag, linesearch = ls, wmax = 20, nlprecon = gdst),
     ]
     solvernames = ["L-BFGS",
                    "N-GMRES-A", "N-GMRES-B",
