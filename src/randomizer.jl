@@ -18,5 +18,5 @@ end
 function randomizeproblem!(prob::OptimizationProblem, rnd::RandomizeInitialxMat, k::Int)
     srand(rnd.seeds[k])
     rand!(prob.initial_x)
-    prob.parameters.mat .= UnconstrainedProblems._randommatrix(length(prob.initial_x), true)
+    prob.parameters.mat .= UP._randommatrix(length(prob.initial_x), true)
 end

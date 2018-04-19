@@ -36,8 +36,8 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
                     time_limit::Real = NaN)
     opts = getopts(metrictol, maxiter, time_limit)
 
-    f0 = value_gradient!(df, x0)
-    g0norm = norm(gradient(df), Inf)
+    f0, g0 = value_gradient!(df, x0)
+    g0norm = norm(g0, Inf)
     try
         # TODO: Does this help for precompilation at all?
         # This can be unnecessarily costly if the line search goes bananas
@@ -91,8 +91,8 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
     try
         x0 = initial_x(prob)
         df0 = optim_problem(prob)
-        f0 = value_gradient!(df0, x0)
-        g0norm = norm(gradient(df0), Inf)
+        f0, g0 = value_gradient!(df0, x0)
+        g0norm = norm(g0, Inf)
     catch e
         warn(e)
         return Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
@@ -104,7 +104,7 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
         metrictol = GradientTolerance(tol,one(T))
     elseif stoptype == :FunctionTolRelative
         fL = solver_optimum(prob)
-        @assert isfinite(fL)
+        @assert isfinite(fL) # TODO: create function to find solver_optimum
         metrictol = FunctionTolerance(tol, f0, fL)
     elseif stoptype == :FunctionTol
         fL = solver_optimum(prob)

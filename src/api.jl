@@ -28,13 +28,13 @@ function optim_problem(op::OptimizationProblem,
                        ) # TODO: How do we choose sparse vs full for H?
     if op.istwicedifferentiable
         df = TwiceDifferentiable(objective(op), gradient(op),
-                                 UnconstrainedProblems.objective_gradient(op),
-                                 UnconstrainedProblems.hessian(op),
+                                 MVP.objective_gradient(op),
+                                 MVP.hessian(op),
                                  initial_x(op),
                                  F, G, H)
     elseif op.isdifferentiable
         df = OnceDifferentiable(objective(op), gradient(op),
-                                UnconstrainedProblems.objective_gradient(op),
+                                MVP.objective_gradient(op),
                                 initial_x(op),
                                 F, G)
     else
@@ -68,6 +68,7 @@ function optimizationproblem(nlp::CUTEstModel)
                              (g, x)->copy!(g, grad(nlp, x)),
                              (g, x)->cutest_fg!(nlp, x, g),
                              (h, x)->cutest_hess!(nlp, x, h),
+                             nothing,
                              nlp.meta.x0,
                              minimizer,
                              minimum,

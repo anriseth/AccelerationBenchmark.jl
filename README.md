@@ -17,5 +17,15 @@ The following benchmark functionality is available.
 In Julia, call `Pkg.clone("https://github.com/anriseth/AccelerationBenchmark.jl.git")` to install AccelerationBenchmark.
 
 
+## Objective acceleration for unconstrained optimization [1]
+
+TODO: Write instructions for this problem
+
+## CUTEst how-to
+
+TODO: describe how to decode the stuff
+
+
+
 ## Bibliography
 [1]: A.N. Riseth. Objective acceleration for unconstrained optimization. arXiv:1710.05200, 2017.

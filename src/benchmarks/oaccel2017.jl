@@ -5,10 +5,13 @@ https://arxiv.org/abs/1710.05200
 =#
 module OACCEL2017
 
-using OptimTestProblems.UnconstrainedProblems
+using OptimTestProblems.MultivariateProblems
 using AccelerationBenchmark
 using Optim, LineSearches
 using JLD, CSV
+
+const MVP = MultivariateProblems
+const UP = MVP.UnconstrainedProblems
 
 function defaulttestsetup()
     # Line search parameters taken from De Sterck
@@ -49,7 +52,7 @@ end
 "Problem A in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createA(N::Int, seednum::Int)
     probname = "A-$N-$seednum"
-    prob = UnconstrainedProblems._quadraticproblem(N)
+    prob = UP._quadraticproblem(N)
 
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -59,7 +62,7 @@ end
 "Problem B in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createB(N::Int, seednum::Int)
     probname = "B-$N-$seednum"
-    prob = UnconstrainedProblems._paraboloidproblem(N)
+    prob = UP._paraboloidproblem(N)
 
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -69,7 +72,7 @@ end
 "Problem C in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createC(N::Int, seednum::Int)
     probname = "C-$N-$seednum"
-    prob = UnconstrainedProblems._paraboloidproblem(N; mat=eye(N))
+    prob = UP._paraboloidproblem(N; mat=eye(N))
 
     rnd = RandomizeInitialxMat([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -79,7 +82,7 @@ end
 "Problem D in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createD(N::Int, seednum::Int)
     probname = "D-$N-$seednum"
-    prob = UnconstrainedProblems._extrosenbrockproblem(N)
+    prob = UP._extrosenbrockproblem(N)
 
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -89,7 +92,7 @@ end
 "Problem E in  AN Riseth - *Objective acceleration for unconstrained optimization*, 2017."
 function createE(N::Int, seednum::Int)
     probname = "E-$N-$seednum"
-    prob = UnconstrainedProblems._extpowellproblem(N)
+    prob = UP._extpowellproblem(N)
 
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -104,7 +107,7 @@ which has a sign difference compared to Riseth.
 """
 function createF(N::Int, seednum::Int)
     probname = "F-$N-$seednum"
-    prob = UnconstrainedProblems._trigonometricproblem(N)
+    prob = UP._trigonometricproblem(N)
 
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
@@ -119,8 +122,7 @@ and the minimum depends on `N`.
 """
 function createG(N::Int, seednum::Int)
     probname = "G-$N-$seednum"
-    prob = UnconstrainedProblems._penfunIproblem(N)
-
+    prob = UP._penfunIproblem(N)
     rnd = RandomizeInitialx([seednum])
     randomizeproblem!(prob, rnd, 1)
     return prob, probname

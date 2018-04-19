@@ -1,12 +1,15 @@
 __precompile__()
 module AccelerationBenchmark
 
-using OptimTestProblems.UnconstrainedProblems
+using OptimTestProblems.MultivariateProblems
 using NLSolversBase
 using Optim, LineSearches
 using DataFrames, DataArrays
 using StatPlots, GroupedErrors
 using CUTEst
+
+const MVP = MultivariateProblems
+const UP = MVP.UnconstrainedProblems
 
 export OptimizationRun, TestSetup, OACCEL2017
 
