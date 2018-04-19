@@ -1,4 +1,4 @@
-__precompile__()
+__precompile__() # TODO: Should we precompile?
 module AccelerationBenchmark
 
 using OptimTestProblems.MultivariateProblems
@@ -23,7 +23,7 @@ export createruns, createmeasures,
 export RandomizeProblem, RandomizeInitialx, RandomizeInitialxMat,
     randomizeproblem!
 
-const DATADIR = Pkg.dir("AccelerationBenchmark")*"/data/"
+const DATADIR = (@__DIR__)*"/../data/"
 
 include("types.jl")
 include("api.jl")

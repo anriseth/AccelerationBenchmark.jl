@@ -1,23 +1,26 @@
 "Tooling for recording minima for test problems"
 module MinimaApproximator
-const DATADIR = Pkg.dir("AccelerationBenchmark")*"/data/"
-const MINIMACSV = DATADIR*"/cutestmins.csv"
-
 using CSV, DataFrames
+using Optim, LineSearches
+using AccelerationBenchmark, OptimTestProblems.MultivariateProblems, CUTEst
+
+const MINIMACSV = AccelerationBenchmark.DATADIR*"/cutestmins.csv"
+
 
 "Return TestSetup used to approximate minima for test problems."
 function defaultminimumsearchts()
+    ls = BackTracking(order=2)
     solvers = [
-        LBFGS(),
-        Newton(),
-        OACCEL()
+        LBFGS(linesearch = ls),
+        Newton(linesearch = ls),
+        OACCEL(linesearch = ls)
     ]
     solvernames = [
         "L-BFGS",
         "Newton",
         "O-ACCEL"
     ]
-    stoptype = :GradientTolerance
+    stoptype = :GradientTol
     stoptol  = 0.0
     timelog  = 0 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
     maxiter  = 2000
@@ -30,7 +33,7 @@ function createminimatable(mdf::DataFrame)
     mindf = DataFrame(Problem = mdf[:Problem],
                       Minimum = mdf[:fval],
                       GradientInfNorm = mdf[:gnorm])
-    mindf = purgeminimatable(mindf::DataFrame)
+    mindf = purgeminimatable(mindf)
 
     return mindf
 end
@@ -67,7 +70,8 @@ function approximatecutestminima(cutestnames::AbstractVector{<:AbstractString},
     mindf = createminimatable(mdf)
 
     if !isempty(csvstore)
-        CSV.write(csvstore, mdf; append=true, header=true)
+        append = isfile(csvstore)
+        CSV.write(csvstore, mindf; append=append, header=true)
         # If the user wants, they can later remove duplicates with `purgeminimatable`.
     end
 
@@ -75,17 +79,36 @@ function approximatecutestminima(cutestnames::AbstractVector{<:AbstractString},
 end
 
 " Fetch stored approximate minimum. "
-function solver_optimum(p::OptimizationProblem,
+function solver_optimum(name::AbstractString,
                         mincsv::AbstractString = MINIMACSV)
+    retval = NaN
     try
-        mindf = CSV.read(mincsv)
-        idx = findfirst(x -> x == p.name, minddf[:Problem])
-        retval = mindf[idx, :Minimum]
+        mindf = isfile(mincsv) ? CSV.read(mincsv) : DataFrame()
+
+        if haskey(mindf.colindex, :Problem)
+            idx = findfirst(x -> x == name, mindf[:Problem])
+            if idx > 0
+                retval = mindf[idx, :Minimum]
+            end
+        end
     catch e
-        warn(e)
+        AccelerationBenchmark.soft_error(e)
         retval = NaN
     end
     return retval
 end
+
+" Fetch stored approximate minimum. "
+solver_optimum(p::OptimizationProblem,
+               mincsv::AbstractString = MINIMACSV) =
+                   solver_optimum(p.name, mincsv)
+
+" Fetch stored approximate minimum. "
+solver_optimum(nlp::CUTEstModel,
+               mincsv::AbstractString = MINIMACSV) =
+                   solver_optimum(AccelerationBenchmark.CUTEstOPname(nlp), mincsv)
+
+
+
 
 end

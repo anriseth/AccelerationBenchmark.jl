@@ -1,7 +1,7 @@
 function getopts(gt::GradientTolerance{T}, maxiter::Int, time_limit::Real = NaN;
                  kwargs...) where T
     # TODO: Figure out a way to make passing options more flexible (time_limit etc.)
-    opts = Optim.Options(f_tol = zero(T), x_tol = zero(T),
+    opts = Optim.Options(f_tol = -T(1), x_tol = T(0),
                          g_tol = gt.g0norm*gt.tol,
                          allow_f_increases = true,
                          iterations = maxiter,
@@ -15,7 +15,7 @@ function getopts(ft::FunctionTolerance{T}, maxiter::Int, time_limit::Real = NaN;
                  kwargs...) where T
     # TODO: Figure out a way to make passing options more flexible (time_limit etc.)
     cb = FunctionStop(ft.fL + ft.tol*(ft.f0 - ft.fL))
-    opts = Optim.Options(f_tol = zero(T), x_tol = zero(T), g_tol = zero(T),
+    opts = Optim.Options(f_tol = -T(1), x_tol = T(0), g_tol = zero(T),
                          allow_f_increases = true,
                          iterations = maxiter, callback = cb,
                          time_limit = time_limit;
@@ -47,19 +47,20 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
         # This can be unnecessarily costly if the line search goes bananas
         optimize(df, x0, solver, Optim.Options(iterations=1))
     catch e
-        warn(e)
+        soft_error(e)
     end
 
-    reset!(df) # Get correct f_calls numbering
+    NLSolversBase.clear!(df) # Get correct f_calls numbering
     sname = isempty(solvername) ? summary(solver) : solvername
     orun = OptimizationRun(0, 0, 0, 0, 0.0, f0, f0, g0norm, g0norm,
                            sname, problemname, metrictol)
     try
         runtime, r = @my_elapsed optimize(df, x0, solver, opts)
-        @show Optim.f_calls(r), Optim.g_calls(r)
+        #@show r
+        #@show Optim.f_calls(r), Optim.g_calls(r)
         for k = 2:numrecordtime
             # TODO: Do this with BenchmarkTools?
-            reset!(df) # Reset df to get f_calls etc. correct
+            NLSolversBase.clear!(df) # Reset df to get f_calls etc. correct
             tmptime, tmpr = @my_elapsed optimize(df, x0, solver, opts)
             if tmptime < runtime
                 runtime = tmptime
@@ -72,7 +73,7 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
                                Optim.g_residual(r), g0norm, sname, problemname,
                                metrictol)
     catch e
-        warn(e)
+        soft_error(e)
     end
     return orun
 end
@@ -89,7 +90,7 @@ function savedata(data,
     try
         save(outname, Dict(name => data))
     catch e
-        warn(e)
+        soft_error(e)
     end
 end
 
@@ -114,7 +115,7 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
         f0, g0 = value_gradient!(df0, x0)
         g0norm = norm(g0, Inf)
     catch e
-        warn(e)
+        soft_error(e)
         oruns = Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
         if saveindividualoruns
             savedata(oruns, problemname)
@@ -146,8 +147,8 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
                                   problemname, metrictol;
                                   numrecordtime=timelog, maxiter = maxiter,
                                   time_limit = time_limit)
-        catch probsolve
-            warn(probsolve)
+        catch e
+            soft_error(e)
             oruns[k] = OptimizationRun(0,0,0,0,zero(time_ns()/1e9),
                                        f0,f0,g0norm,g0norm,
                                        solvernames[k],problemname,false)
@@ -176,19 +177,20 @@ function createruns(cutestname::AbstractString,
                     saveindividualoruns::Bool = false
                     ) where T <: Real
     verbose && println("Loading $cutestname ...")
-    local oruns
+    local oruns, nlp
     try
         nlp = CUTEstModel(cutestname, decode=decode)
         prob = optimizationproblem(nlp)
         oruns = createruns(prob, prob.name, solvers, solvernames,
                            tol, stoptype, timelog, maxiter;
-                           verbose = verbose, time_limit = time_limit
+                           verbose = verbose, time_limit = time_limit,
                            saveindividualoruns = saveindividualoruns)
-        finalize(nlp)
     catch e
-        warn(e)
+        soft_error(e)
         oruns = Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
     end
+    finalize(nlp)
+
     return oruns
 end
 createruns(cutestname::AbstractString, ts::TestSetup;
@@ -435,4 +437,13 @@ function createperfprofiles(oruns::Vector{OptimizationRun}, sym::Symbol = :fcall
                             kwargs...)
     createperfprofiles(createratiodataframe(oruns, solvers), sym;
                        t=t, xscale=xscale, ylims=ylims, kwargs...)
+end
+
+"""
+Decode CUTEst models before running `createmeasures`,
+in order to support running problems in parallel.
+"""
+function decodemodel(name)
+    finalize(CUTEstModel(name))
+    name
 end

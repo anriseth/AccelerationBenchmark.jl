@@ -32,7 +32,7 @@ end
 function optim_problem(op::OptimizationProblem,
                        F = real(zero(eltype(initial_x(op)))),
                        G = similar(initial_x(op)),
-                       H = spzeros(eltype(initial_x(op)), size(initial_x(op))...),
+                       H = spzeros(eltype(initial_x(op)), length(initial_x(op)), length(initial_x(op))),
                        ) # TODO: How do we choose sparse vs full for H?
     if op.istwicedifferentiable
         df = TwiceDifferentiable(objective(op), gradient(op),
@@ -60,7 +60,7 @@ Returns (minimizer, minimum)
 function minimumlookup(nlp::CUTEstModel)
     # TODO: Should we store the minimizer, or just give it back a NaN?
     # TODO: Should the NaN-minimizer be of size nlp.meta.nvar?
-    return [NaN], MinimaApproximator.solver_optimum(optimizationproblem(nlp))
+    return [NaN], MinimaApproximator.solver_optimum(nlp)
 end
 
 function optimizationproblem(nlp::CUTEstModel)
@@ -70,7 +70,7 @@ function optimizationproblem(nlp::CUTEstModel)
         warn("We currently only support unconstrained CUTEst models, but $(nlp.meta.name) has `ncon > 0`.")
     end
     minimizer, minimum = minimumlookup(nlp)
-    op = OptimizationProblem("$(nlp.meta.name)-$(nlp.meta.nvar)",
+    op = OptimizationProblem(AccelerationBenchmark.CUTEstOPname(nlp),
                              x->obj(nlp, x),
                              (g, x)->copy!(g, grad(nlp, x)),
                              (g, x)->cutest_fg!(nlp, x, g),
@@ -81,4 +81,16 @@ function optimizationproblem(nlp::CUTEstModel)
                              minimum,
                              true,
                              true)
+end
+
+"Generic name to use with OptimizationProblem from a CUTEstModel"
+CUTEstOPname(nlp::CUTEstModel) = "$(nlp.meta.name)-$(nlp.meta.nvar)" #TODO: deal with parameters
+
+
+function soft_error(e::Exception)
+    print_with_color(:yellow, "SOFT ERROR: ")
+    println(e)
+    #rethrow(e)
+    Base.show_backtrace(STDOUT, catch_stacktrace())
+    println()
 end
