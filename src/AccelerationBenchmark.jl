@@ -7,11 +7,13 @@ using Optim, LineSearches
 using DataFrames, DataArrays
 using StatPlots, GroupedErrors
 using CUTEst
+using FileIO
 
 const MVP = MultivariateProblems
 const UP = MVP.UnconstrainedProblems
 
-export OptimizationRun, TestSetup, OACCEL2017
+export OptimizationRun, TestSetup, OACCEL2017,
+    MinimaApproximator
 
 export createruns, createmeasures,
     createmeasuredataframe, createratiodataframe,
@@ -28,5 +30,6 @@ include("utils.jl")
 include("randomizer.jl")
 
 include("benchmarks/oaccel2017.jl")
+include("benchmarks/minimaapproximator.jl")
 
 end # module

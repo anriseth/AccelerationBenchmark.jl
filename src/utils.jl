@@ -1,21 +1,25 @@
-function getopts(gt::GradientTolerance{T}, maxiter::Int, time_limit::Real = NaN) where T
+function getopts(gt::GradientTolerance{T}, maxiter::Int, time_limit::Real = NaN;
+                 kwargs...) where T
     # TODO: Figure out a way to make passing options more flexible (time_limit etc.)
     opts = Optim.Options(f_tol = zero(T), x_tol = zero(T),
                          g_tol = gt.g0norm*gt.tol,
                          allow_f_increases = true,
                          iterations = maxiter,
-                         time_limit = time_limit)#,
+                         time_limit = time_limit,
+                         kwargs...)#,
                          #show_trace=true,extended_trace=true, store_trace=true)
     return opts
 end
 
-function getopts(ft::FunctionTolerance{T}, maxiter::Int, time_limit::Real = NaN) where T
+function getopts(ft::FunctionTolerance{T}, maxiter::Int, time_limit::Real = NaN;
+                 kwargs...) where T
     # TODO: Figure out a way to make passing options more flexible (time_limit etc.)
     cb = FunctionStop(ft.fL + ft.tol*(ft.f0 - ft.fL))
     opts = Optim.Options(f_tol = zero(T), x_tol = zero(T), g_tol = zero(T),
                          allow_f_increases = true,
                          iterations = maxiter, callback = cb,
-                         time_limit = time_limit)
+                         time_limit = time_limit;
+                         kwargs...)
     return opts
 end
 
@@ -75,6 +79,21 @@ end
 
 
 """
+Save individual data, default assumption is that the data is an
+`OptimizationRun`, or an array of `OptimizationRun`s
+"""
+function savedata(data,
+                  name::AbstractString,
+                  basedir::AbstractString = Pkg.dir("AccelerationBenchmark")*"/data/oruns/")
+    outname = basedir*"/"*name*".jld2"
+    try
+        save(outname, Dict(name => data))
+    catch e
+        warn(e)
+    end
+end
+
+"""
 Loop over solvers for OptimizationProblem `prob` and optimize until a given `stoptolerance`.
 
 Return vector of `OptimizationRun`s for a given problem.
@@ -84,7 +103,8 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
                     solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                     maxiter::Int = 1000; time_limit::Real = NaN,
-                    verbose::Bool = true) where T <: Real
+                    verbose::Bool = true,
+                    saveindividualoruns::Bool = false) where T <: Real
     # TODO: Is it problematic for specialized compilation to use stoptype::Symbol?
     verbose && println("Running $problemname ...")
     local x0, f0, g0norm # Ensure variables stay in method scope
@@ -95,7 +115,11 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
         g0norm = norm(g0, Inf)
     catch e
         warn(e)
-        return Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
+        oruns = Vector{OptimizationRun{typeof(time_ns()/1e9),T}}(0)
+        if saveindividualoruns
+            savedata(oruns, problemname)
+        end
+        return oruns
     end
 
     if stoptype == :GradientTolRelative
@@ -131,6 +155,9 @@ function createruns(prob::OptimizationProblem, problemname::AbstractString,
     end
     verbose && println("Finished $problemname.")
 
+    if saveindividualoruns
+        savedata(oruns, problemname)
+    end
     return oruns
 end
 
@@ -145,7 +172,9 @@ function createruns(cutestname::AbstractString,
                     tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
                     maxiter::Int = 1000; time_limit::Real = NaN,
                     decode::Bool = false,
-                    verbose::Bool = true) where T <: Real
+                    verbose::Bool = true,
+                    saveindividualoruns::Bool = false
+                    ) where T <: Real
     verbose && println("Loading $cutestname ...")
     local oruns
     try
@@ -153,7 +182,8 @@ function createruns(cutestname::AbstractString,
         prob = optimizationproblem(nlp)
         oruns = createruns(prob, prob.name, solvers, solvernames,
                            tol, stoptype, timelog, maxiter;
-                           verbose = verbose, time_limit = time_limit)
+                           verbose = verbose, time_limit = time_limit
+                           saveindividualoruns = saveindividualoruns)
         finalize(nlp)
     catch e
         warn(e)
@@ -161,10 +191,12 @@ function createruns(cutestname::AbstractString,
     end
     return oruns
 end
-createruns(cutestname::AbstractString, ts::TestSetup) =
+createruns(cutestname::AbstractString, ts::TestSetup;
+           saveindividualoruns::Bool = false) =
     createruns(cutestname, ts.solvers, ts.solvernames,
                ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-               time_limit = ts.timelimit)
+               time_limit = ts.timelimit,
+               saveindividualoruns = saveindividualoruns)
 
 
 """
@@ -175,21 +207,25 @@ Returns a vector of `OptimizationRun`s.
 function createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::AbstractVector{<:AbstractString},
                         solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                         tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
-                        maxiter::Int = 1000;
-                        time_limit::Real = NaN) where T <: Real
+                        maxiter::Int = 1000; time_limit::Real = NaN,
+                        saveindividualoruns::Bool = false) where T <: Real
+
     oruns = reduce(append!, pmap(k->createruns(problems[k], problemnames[k],
                                                solvers, solvernames, tol,
                                                stoptype, timelog, maxiter;
-                                               time_limit = time_limit),
+                                               time_limit = time_limit,
+                                               saveindividualoruns = saveindividualoruns),
                                  1:length(problems)))
     return oruns
 end
 
 createmeasures(problems::AbstractVector{<:OptimizationProblem}, problemnames::AbstractVector{<:AbstractString},
-               ts::TestSetup) =
+               ts::TestSetup;
+               saveindividualoruns::Bool = false) =
                    createmeasures(problems, problemnames, ts.solvers, ts.solvernames,
                                   ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-                                  time_limit = ts.timelimit)
+                                  time_limit = ts.timelimit,
+                                  saveindividualoruns = saveindividualoruns)
 
 """
 Create performance measures of a list of solvers on a collection of CUTEst problems.
@@ -201,21 +237,25 @@ Returns a vector of `OptimizationRun`s.
 function createmeasures(cutestnames::AbstractVector{<:AbstractString},
                         solvers::AbstractVector, solvernames::AbstractVector{<:AbstractString},
                         tol::T, stoptype::Symbol = :GradientTolRelative, timelog::Int = 0,
-                        maxiter::Int = 1000; time_limit::Real = NaN) where T <: Real
+                        maxiter::Int = 1000; time_limit::Real = NaN,
+                        saveindividualoruns::Bool = true) where T <: Real
     oruns = reduce(append!, pmap(k->createruns(cutestnames[k],
                                                solvers, solvernames, tol,
                                                stoptype, timelog, maxiter;
                                                decode = false,
-                                               time_limit = time_limit),
+                                               time_limit = time_limit,
+                                               saveindividualoruns = saveindividualoruns),
                                  1:length(cutestnames)))
     return oruns
 end
 
 createmeasures(cutestnames::AbstractVector{<:AbstractString},
-               ts::TestSetup) =
+               ts::TestSetup;
+               saveindividualoruns::Bool = false) =
                    createmeasures(cutestnames, ts.solvers, ts.solvernames,
                                   ts.stoptol, ts.stoptype, ts.timelog, ts.maxiter;
-                                  time_limit = ts.timelimit)
+                                  time_limit = ts.timelimit,
+                                  saveindividualoruns = saveindividualoruns)
 
 
 """
