@@ -1,5 +1,7 @@
 "Tooling for recording minima for test problems"
 module MinimaApproximator
+const DATADIR = Pkg.dir("AccelerationBenchmark")*"/data/"
+const MINIMACSV = DATADIR*"/cutestmins.csv"
 
 using CSV, DataFrames
 
@@ -45,7 +47,7 @@ function purgeminimatable(mindf::DataFrame)
 end
 
 "Purge duplicate entries for a Problem in csvstore"
-function purgeminimatable(csvstore::AbstractString = Pkg.dir("AccelerationBenchmark")*"/data/cutestmins.csv")
+function purgeminimatable(csvstore::AbstractString = MINIMACSV)
     df = purgeminimatable(CSV.read(csvstore))
     CSV.write(csvstore, df; append=false, header=true)
 end
@@ -58,7 +60,7 @@ Return minima DataFrame, performance measure DataFrame, and vector of Optimizati
 """
 function approximatecutestminima(cutestnames::AbstractVector{<:AbstractString},
                                  ts::TestSetup = defaultminimumsearchts(),
-                                 csvstore::AbstractString = Pkg.dir("AccelerationBenchmark")*"/data/cutestmins.csv";
+                                 csvstore::AbstractString = MINIMACSV;
                                  saveindividualoruns::Bool = true)
     oruns = createmeasures(cutestnames, ts; saveindividualoruns = saveindividualoruns)
     mdf = createmeasuredataframe(oruns)
@@ -70,6 +72,20 @@ function approximatecutestminima(cutestnames::AbstractVector{<:AbstractString},
     end
 
     return mindf, mdf, oruns
+end
+
+" Fetch stored approximate minimum. "
+function solver_optimum(p::OptimizationProblem,
+                        mincsv::AbstractString = MINIMACSV)
+    try
+        mindf = CSV.read(mincsv)
+        idx = findfirst(x -> x == p.name, minddf[:Problem])
+        retval = mindf[idx, :Minimum]
+    catch e
+        warn(e)
+        retval = NaN
+    end
+    return retval
 end
 
 end

@@ -23,6 +23,7 @@ export createruns, createmeasures,
 export RandomizeProblem, RandomizeInitialx, RandomizeInitialxMat,
     randomizeproblem!
 
+const DATADIR = Pkg.dir("AccelerationBenchmark")*"/data/"
 
 include("types.jl")
 include("api.jl")

@@ -1,7 +1,15 @@
 import OptimTests: initial_x, solution_optimum, optim_problem
 
 initial_x(p::OptimizationProblem) = p.initial_x
-solver_optimum(p::OptimizationProblem) = p.minimum
+
+function solver_optimum(p::OptimizationProblem,
+                        optimum_storage::AbstractString = MinimaApproximator.MINIMACSV)
+    retval = p.minimum
+    if !isfinite(retval)
+        MinimaApproximator.solver_optimum(p, optimum_storage)
+    end
+    return retval
+end
 
 function cutest_fg!(nlp, x, g)
     grad!(nlp, x, g)
@@ -50,10 +58,9 @@ Look up a the best (known) minimum of a CUTEst model.
 Returns (minimizer, minimum)
 """
 function minimumlookup(nlp::CUTEstModel)
-    # TODO: Create approximate minimum
     # TODO: Should we store the minimizer, or just give it back a NaN?
     # TODO: Should the NaN-minimizer be of size nlp.meta.nvar?
-    return [NaN], NaN
+    return [NaN], MinimaApproximator.solver_optimum(optimizationproblem(nlp))
 end
 
 function optimizationproblem(nlp::CUTEstModel)

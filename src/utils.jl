@@ -84,7 +84,7 @@ Save individual data, default assumption is that the data is an
 """
 function savedata(data,
                   name::AbstractString,
-                  basedir::AbstractString = Pkg.dir("AccelerationBenchmark")*"/data/oruns/")
+                  basedir::AbstractString = DATADIR*"/oruns/")
     outname = basedir*"/"*name*".jld2"
     try
         save(outname, Dict(name => data))
