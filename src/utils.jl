@@ -88,7 +88,7 @@ function savedata(data,
                   basedir::AbstractString = DATADIR*"/oruns/")
     outname = basedir*"/"*name*".jld2"
     try
-        save(outname, Dict(name => data))
+        save(outname, Dict("data" => data))
     catch e
         soft_error(e)
     end

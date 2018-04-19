@@ -3,6 +3,7 @@ module MinimaApproximator
 using CSV, DataFrames
 using Optim, LineSearches
 using AccelerationBenchmark, OptimTestProblems.MultivariateProblems, CUTEst
+import NaNMath
 
 const MINIMACSV = AccelerationBenchmark.DATADIR*"/cutestmins.csv"
 
@@ -24,7 +25,7 @@ function defaultminimumsearchts()
     stoptol  = 0.0
     timelog  = 0 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
     maxiter  = 2000
-    timelimit = NaN
+    timelimit = 200.0 # In seconds. Mainly prevents Newton from going on forever on bigger problems
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)
 end
 
@@ -44,15 +45,19 @@ function purgeminimatable(mindf::DataFrame)
     delete!(colidx, :Problem)
 
     retval = by(mindf, :Problem) do df
-        df[findfirst(x -> x == minimum(df[:Minimum]), df[:Minimum]), colidx.names]
+        df[findfirst(x -> x == NaNMath.minimum(df[:Minimum]), df[:Minimum]), colidx.names]
     end
     retval
 end
 
 "Purge duplicate entries for a Problem in csvstore"
 function purgeminimatable(csvstore::AbstractString = MINIMACSV)
-    df = purgeminimatable(CSV.read(csvstore))
-    CSV.write(csvstore, df; append=false, header=true)
+    if isfile(csvstore)
+        df = purgeminimatable(CSV.read(csvstore))
+        CSV.write(csvstore, df; append=false, header=true)
+    else
+        warn("The file `csvstore` not exist.\n `csvstore = $csvstore`.")
+    end
 end
 
 """
