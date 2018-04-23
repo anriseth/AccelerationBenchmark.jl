@@ -37,8 +37,9 @@ function runproblem(df, x0, solver::Optim.AbstractOptimizer, solvername::Abstrac
                     problemname::AbstractString,
                     metrictol::StopTolerance;
                     numrecordtime::Int = 0, maxiter::Int = 1000,
-                    time_limit::Real = NaN)
-    opts = getopts(metrictol, maxiter, time_limit)
+                    time_limit::Real = NaN,
+                    kwargs...)
+    opts = getopts(metrictol, maxiter, time_limit; kwargs...)
 
     f0, g0 = value_gradient!(df, x0)
     g0norm = norm(g0, Inf)

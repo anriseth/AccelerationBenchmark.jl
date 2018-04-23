@@ -21,7 +21,7 @@ function gettestset()
     lsgd = lshz
     lsacc = lshz
 
-    preconls = Static(alpha=1.0)
+    preconls = Static()
     gdprecon = GradientDescent(linesearch = preconls,
                                alphaguess = agscaled)
 

@@ -20,7 +20,7 @@ function defaulttestsetup()
     # In the updated paper we use gtol=0.1.
     ls = MoreThuente(f_tol = 1e-4, gtol = 1e-1, x_tol = 1e-15,
                      alphamin = 1e-15, alphamax = 1e15, maxfev = 20)
-    lsstatic = Static(alpha = 1.0)
+    lsstatic = Static()
     agscaled = InitialStatic(alpha = 1e-4, scaled = true)
     ag = InitialStatic(alpha=1.0, scaled=false)
 
