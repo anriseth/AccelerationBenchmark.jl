@@ -1,5 +1,8 @@
-    using AccelerationBenchmark
-using JLD, DataFrames, StatPlots, NaNMath, LaTeXStrings
+using AccelerationBenchmark
+using FileIO, DataFrames, StatPlots, NaNMath, LaTeXStrings
+
+#pyplot()
+pgfplots()
 
 searchdir(path,key) = filter(x->contains(x,key), readdir(path))
 
@@ -23,7 +26,7 @@ function more_tests()
     return plt
 end
 
-function cutest_tests(fname::AbstractString = "data/cutest_50_10000.jld",
+function cutest_tests(fname::AbstractString = "data/cutest_our_selected.jld2",
                       xmax::Number = NaN)
     mdf = load(fname, "mdf")
 
@@ -53,6 +56,6 @@ function cutest_tests(fname::AbstractString = "data/cutest_50_10000.jld",
     plt = plot(pltf,pltg,pltc,plti)
 end
 
-min_var = 50
-max_var = 10000
-plt_more = more_tests("data/cutest_$(min_var)_$(max_var).jld", NaN)
+#plt_more = more_tests()
+
+plt_cutest = cutest_tests("data/cutest_our_selected.jld2", NaN)
