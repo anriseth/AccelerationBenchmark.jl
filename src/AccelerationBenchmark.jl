@@ -1,3 +1,5 @@
+warn("AccelerationBenchmark has many dependencies that take ages to precompile / load ...")
+
 __precompile__() # TODO: Should we precompile?
 module AccelerationBenchmark
 

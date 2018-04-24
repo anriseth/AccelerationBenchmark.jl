@@ -9,22 +9,29 @@ const MINIMACSV = AccelerationBenchmark.DATADIR*"/cutestmins.csv"
 
 
 "Return TestSetup used to approximate minima for test problems."
-function defaultminimumsearchts()
+function defaultminimumsearchts(newton::Bool = true)
     ls = BackTracking(order=2)
     solvers = [
         LBFGS(linesearch = ls),
-        Newton(linesearch = ls),
-        OACCEL(linesearch = ls)
+        OACCEL(linesearch = ls),
+        Newton(linesearch = ls)
     ]
     solvernames = [
         "L-BFGS",
-        "Newton",
-        "O-ACCEL"
+        "O-ACCEL",
+        "Newton"
     ]
+
+    # Newton is slow to evaluate/factorise Hessian
+    # for e.g. FMINSURF and POWER, so make it an alternative
+    if newton == false
+        pop!(solvers)
+        pop!(solvernames)
+    end
     stoptype = :GradientTol
     stoptol  = 0.0
     timelog  = 0 # timelog = 1 can cause very inaccurate timings due to compilation and garbage collection
-    maxiter  = 2000
+    maxiter  = 5000
     timelimit = 200.0 # In seconds. Mainly prevents Newton from going on forever on bigger problems
     TestSetup(solvers,solvernames,stoptype,stoptol,timelog,maxiter,timelimit)
 end
@@ -60,6 +67,22 @@ function purgeminimatable(csvstore::AbstractString = MINIMACSV)
     end
 end
 
+function checknames(names::AbstractVector{<:AbstractString},
+                    ts::TestSetup)
+    probnames = Vector{String}()
+    for solver in ts.solvers
+        if typeof(solver) <: Newton
+            badnewton = ["FMINSURF", "POWER"]
+            for name in names
+                if name in badnewton
+                    push!(probnames, name)
+                end
+            end
+        end
+    end
+    return probnames
+end
+
 """
 Helper method for approximating the minima of the CUTEst models in `cutestnames`,
 and appending it to `csvstore`.
@@ -88,8 +111,10 @@ function solver_optimum(name::AbstractString,
                         mincsv::AbstractString = MINIMACSV)
     retval = NaN
     try
-        mindf = isfile(mincsv) ? CSV.read(mincsv) : DataFrame()
-
+        mindf = DataFrame()
+        if isfile(mincsv)
+            mindf = CSV.read(mincsv)
+        end
         if haskey(mindf.colindex, :Problem)
             idx = findfirst(x -> x == name, mindf[:Problem])
             if idx > 0
